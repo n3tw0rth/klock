@@ -1,13 +1,15 @@
-use anyhow::Result;
-use keyring::Entry;
-use std::io::{self, Write};
+use reqwest::{Client, ClientBuilder};
+use std::io::Write;
 
 use crate::common::{Secrets, helpers};
+use crate::error::{Error, Result};
 
 #[derive(Debug)]
 enum JiraSecrets {
     Username,
     JiraApiToken,
+    AccountId,
+    Server,
 }
 
 impl std::fmt::Display for JiraSecrets {
@@ -16,42 +18,91 @@ impl std::fmt::Display for JiraSecrets {
     }
 }
 
+/// JQL query slices for different scenarios
+enum JiraSearchQuery {
+    /// All Issues assigned to the user in a specific project
+    IssuesOnProjectQuery,
+    BlankQuery,
+}
+
+impl JiraSearchQuery {
+    /// returns the query string for each enum field
+    pub fn query(&self, server: &str, account_id: &str, project: &str) -> String {
+        let search_url = format!("https://{}/rest/api/3/search?", server);
+        let query_slice = match self {
+            JiraSearchQuery::IssuesOnProjectQuery => {
+                format!(
+                    "jql=assignee%3D{}%20and%20project%3D{}%20&fields=key,summary,statusCategory&maxResults=",
+                    account_id,
+                    project.to_uppercase()
+                )
+            }
+            JiraSearchQuery::BlankQuery => "".to_owned(),
+        };
+        format!("{search_url}{query_slice}")
+    }
+}
+
 #[derive(Default)]
 pub struct Jira {
     pub authenticated: bool,
+    pub server: String,
     pub username: String,
     pub jira_api_token: String,
+    pub client: Client,
 }
 
 impl Jira {
+    /// Instantiate the Jira with the default values
     pub async fn new() -> Self {
-        Self { ..Jira::default() }
+        let client = ClientBuilder::new()
+            .build()
+            .expect("Failed to create the HTTP client");
+        Self {
+            client,
+            ..Default::default()
+        }
     }
 
     /// check if the user is authenticated by checking if username and the apikeys is_empty()
     /// is unauthenticated the user will prompt to authenticate
     pub async fn init(mut self) -> Result<()> {
-        println!("{:?}", Secrets::get(&JiraSecrets::Username.to_string())?);
-        println!(
-            "{:?}",
-            Secrets::get(&JiraSecrets::JiraApiToken.to_string())?
-        );
-
-        if !(self.username.is_empty() && self.jira_api_token.is_empty()) {
+        if !(Secrets::get(&JiraSecrets::JiraApiToken.to_string())?.is_empty()
+            && Secrets::get(&JiraSecrets::Username.to_string())?.is_empty())
+        {
             self.authenticated = true;
         } else {
+            helpers::promt_user("enter the atlassian servername")?;
+            self.server = helpers::read_stdin()?;
             helpers::promt_user("enter user name below: ")?;
-            let _ = std::io::stdout().flush();
             self.username = helpers::read_stdin()?;
             helpers::promt_user("enter jira api key below: ")?;
             self.jira_api_token = helpers::read_stdin()?;
 
-            Secrets::set(&JiraSecrets::Username.to_string(), self.username)?;
-            Secrets::set(&JiraSecrets::JiraApiToken.to_string(), self.jira_api_token)?;
+            Secrets::set(&JiraSecrets::Username.to_string(), &self.username)?;
+            Secrets::set(&JiraSecrets::JiraApiToken.to_string(), &self.jira_api_token)?;
+            Secrets::set(&JiraSecrets::Server.to_string(), &self.server)?;
 
-            self.username = Secrets::get(&JiraSecrets::Username.to_string())?;
-            self.jira_api_token = Secrets::get(&JiraSecrets::JiraApiToken.to_string())?;
+            self.find_account_id().await?;
         }
+
         Ok(())
     }
+
+    pub async fn find_account_id(self) -> Result<()> {
+        let myself_url = format!("https://{}/rest/api/3/myself", self.server);
+        let response = self
+            .client
+            .get(myself_url)
+            .basic_auth(self.username, Some(self.jira_api_token))
+            .send()
+            .await?;
+        println!("{:?}", response);
+        Ok(())
+    }
+
+    //pub async fn issues(self) {
+    //    self.client
+    //        .get("https://surgeglobal.atlassian.net/rest/api/3/search?{querygoeshere}")
+    //}
 }

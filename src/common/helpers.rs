@@ -1,13 +1,16 @@
 use crate::error::{Error, Result};
 use std::io::Write;
 
+/// Secrets are managed on the keyring and secrets are persisted
 pub struct Secrets {}
 impl Secrets {
-    pub fn set(key: &str, secret: String) -> Result<()> {
+    /// Set keyring secrets
+    pub fn set(key: &str, secret: &String) -> Result<()> {
         keyring::Entry::new(env!("CARGO_PKG_NAME"), key)?.set_secret(secret.trim().as_bytes())?;
         Ok(())
     }
 
+    /// Get keyring secrets
     pub fn get(key: &str) -> Result<String> {
         let secret = keyring::Entry::new(env!("CARGO_PKG_NAME"), key)?.get_secret()?;
         String::from_utf8(secret).map_err(|e| Error::CustomError(e.to_string()))

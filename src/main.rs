@@ -1,5 +1,5 @@
-use anyhow::Result;
 use jired::app::Jira;
+use jired::error::Result;
 
 #[tokio::main]
 async fn main() -> Result<()> {
