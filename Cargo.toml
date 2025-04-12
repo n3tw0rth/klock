@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+clap = { version = "4.5.36", features = ["derive"] }
 keyring = { version = "3.6.2", features = ["linux-native-sync-persistent","linux-native","sync-secret-service"] }
 reqwest = "0.12.15"
 serde = { version = "1.0.219", features = ["derive"] }
