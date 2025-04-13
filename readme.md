@@ -1,4 +1,4 @@
-# Terminal Time Tracker
+# Jired
 
 A command-line tool for logging time across multiple time tracking platforms including Jira, Clockify, and more.
 
