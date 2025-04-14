@@ -108,14 +108,16 @@ impl Board for Jira {
     }
 
     async fn get_project_issues(&self, project_code: &str) -> Result<()> {
+        let query = JiraSearchQuery::IssuesOnProjectQuery.query(
+            &self.server,
+            &self.account_id,
+            project_code,
+        );
+
         self.client
             .get(format!(
                 "https://surgeglobal.atlassian.net/rest/api/3/search?{}",
-                JiraSearchQuery::IssuesOnProjectQuery.query(
-                    &self.server,
-                    &self.account_id,
-                    project_code
-                )
+                query
             ))
             .basic_auth(self.username.clone(), Some(self.jira_api_token.clone()))
             .send()
