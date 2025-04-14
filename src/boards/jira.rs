@@ -1,12 +1,15 @@
+use async_trait::async_trait;
 use reqwest::{Client, ClientBuilder};
+use strum::{EnumIter, IntoEnumIterator};
 
+use crate::Args;
 use crate::common::{Secrets, helpers};
 use crate::error::{Error, Result};
 
 use super::Board;
 
 /// Defines the types of secrets used with Jira
-#[derive(Debug)]
+#[derive(Debug, EnumIter)]
 enum JiraSecrets {
     Username,
     JiraApiToken,
@@ -54,8 +57,10 @@ pub struct Jira {
     pub username: String,
     pub jira_api_token: String,
     pub client: Client,
+    pub account_id: String,
 }
 
+#[async_trait]
 impl Board for Jira {
     /// Instantiate the Jira with the default values
     async fn new() -> Self {
@@ -68,9 +73,18 @@ impl Board for Jira {
         }
     }
 
+    async fn process_arguments(&self, args: Args) -> Result<()> {
+        if args.logout.unwrap_or(false) {
+            self.logout().await?;
+        }
+        Ok(())
+    }
+
     /// check if the user is authenticated by checking if username and the apikeys is_empty()
     /// is unauthenticated the user will prompt to authenticate
-    async fn init(mut self) -> Result<()> {
+    async fn init(mut self, args: Args) -> Result<()> {
+        self.process_arguments(args).await?;
+
         if !(Secrets::get(&JiraSecrets::JiraApiToken.to_string())?.is_empty()
             && Secrets::get(&JiraSecrets::Username.to_string())?.is_empty())
         {
@@ -93,10 +107,27 @@ impl Board for Jira {
         Ok(())
     }
 
-    async fn issues(&self) -> Result<()> {
-        unimplemented!();
-        //self.client
-        //    .get("https://surgeglobal.atlassian.net/rest/api/3/search?{querygoeshere}")
+    async fn get_project_issues(&self, project_code: &str) -> Result<()> {
+        self.client
+            .get(format!(
+                "https://surgeglobal.atlassian.net/rest/api/3/search?{}",
+                JiraSearchQuery::IssuesOnProjectQuery.query(
+                    &self.server,
+                    &self.account_id,
+                    project_code
+                )
+            ))
+            .basic_auth(self.username.clone(), Some(self.jira_api_token.clone()))
+            .send()
+            .await?;
+        Ok(())
+    }
+
+    async fn logout(&self) -> Result<()> {
+        for secret in JiraSecrets::iter() {
+            Secrets::delete(&secret.to_string()).map_err(|e| e)?
+        }
+        Ok(())
     }
 }
 

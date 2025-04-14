@@ -1,3 +1,7 @@
+pub mod clickup;
+pub mod clockify;
+pub mod jira;
+
 use crate::error::Result;
 
 trait Clock {

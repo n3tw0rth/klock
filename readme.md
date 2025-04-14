@@ -31,7 +31,7 @@ Terminal Time Tracker is a flexible, plugin-based CLI application that allows de
 Once installed, you can begin tracking time with the following commands:
 
 ```bash
-# Time stamp the start of a task
+# Time stamp the start of a last task
 jj start <project-code> <fuzzy-text>
 
 # Time stamp the end of a task

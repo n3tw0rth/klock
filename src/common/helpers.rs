@@ -15,6 +15,12 @@ impl Secrets {
         let secret = keyring::Entry::new(env!("CARGO_PKG_NAME"), key)?.get_secret()?;
         String::from_utf8(secret).map_err(|e| Error::CustomError(e.to_string()))
     }
+
+    /// Delete keyring secrets
+    pub fn delete(key: &str) -> Result<()> {
+        keyring::Entry::new(env!("CARGO_PKG_NAME"), key)?.delete_credential()?;
+        Ok(())
+    }
 }
 
 /// Used to read user inputs from the terminal

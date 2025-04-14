@@ -11,7 +11,8 @@ use clap::Parser;
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 pub struct Args {
-    /// Resets the application state, removes the user provided secrets
-    #[arg(long)]
-    reset: Option<bool>,
+    /// Logout, removes user credential from local machine
+    /// user must login again to use the cli
+    #[arg(short, long)]
+    logout: Option<bool>,
 }

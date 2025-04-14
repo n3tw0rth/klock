@@ -1,9 +1,5 @@
 use serde::Deserialize;
 
-pub mod jira;
-
-pub use jira::*;
-
 #[derive(Deserialize)]
 struct Issues {
     pub issues: Issue,
