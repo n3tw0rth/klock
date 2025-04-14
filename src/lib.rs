@@ -1,4 +1,6 @@
 pub mod app;
+pub mod boards;
+pub mod clocks;
 pub mod common;
 pub mod error;
 pub mod prelude;

@@ -1,9 +1,11 @@
 use reqwest::{Client, ClientBuilder};
-use std::io::Write;
 
 use crate::common::{Secrets, helpers};
 use crate::error::{Error, Result};
 
+use super::Board;
+
+/// Defines the types of secrets used with Jira
 #[derive(Debug)]
 enum JiraSecrets {
     Username,
@@ -12,6 +14,7 @@ enum JiraSecrets {
     Server,
 }
 
+/// Implement Display trait to add .to_string() to enum fields
 impl std::fmt::Display for JiraSecrets {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Debug::fmt(self, f)
@@ -25,6 +28,7 @@ enum JiraSearchQuery {
     BlankQuery,
 }
 
+/// Implements a query() method on each enum field to return a query string
 impl JiraSearchQuery {
     /// returns the query string for each enum field
     pub fn query(&self, server: &str, account_id: &str, project: &str) -> String {
@@ -52,9 +56,9 @@ pub struct Jira {
     pub client: Client,
 }
 
-impl Jira {
+impl Board for Jira {
     /// Instantiate the Jira with the default values
-    pub async fn new() -> Self {
+    async fn new() -> Self {
         let client = ClientBuilder::new()
             .build()
             .expect("Failed to create the HTTP client");
@@ -66,7 +70,7 @@ impl Jira {
 
     /// check if the user is authenticated by checking if username and the apikeys is_empty()
     /// is unauthenticated the user will prompt to authenticate
-    pub async fn init(mut self) -> Result<()> {
+    async fn init(mut self) -> Result<()> {
         if !(Secrets::get(&JiraSecrets::JiraApiToken.to_string())?.is_empty()
             && Secrets::get(&JiraSecrets::Username.to_string())?.is_empty())
         {
@@ -89,7 +93,15 @@ impl Jira {
         Ok(())
     }
 
-    pub async fn find_account_id(self) -> Result<()> {
+    async fn issues(&self) -> Result<()> {
+        unimplemented!();
+        //self.client
+        //    .get("https://surgeglobal.atlassian.net/rest/api/3/search?{querygoeshere}")
+    }
+}
+
+impl Jira {
+    async fn find_account_id(self) -> Result<()> {
         let myself_url = format!("https://{}/rest/api/3/myself", self.server);
         let response = self
             .client
@@ -100,9 +112,4 @@ impl Jira {
         println!("{:?}", response);
         Ok(())
     }
-
-    //pub async fn issues(self) {
-    //    self.client
-    //        .get("https://surgeglobal.atlassian.net/rest/api/3/search?{querygoeshere}")
-    //}
 }
