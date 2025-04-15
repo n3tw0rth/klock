@@ -2,9 +2,9 @@ use async_trait::async_trait;
 use reqwest::{Client, ClientBuilder};
 use strum::{EnumIter, IntoEnumIterator};
 
-use crate::Args;
 use crate::common::{Secrets, helpers};
 use crate::error::{Error, Result};
+use crate::{Args, Commands};
 
 use super::Board;
 
@@ -74,9 +74,25 @@ impl Board for Jira {
     }
 
     async fn process_arguments(&self, args: Args) -> Result<()> {
-        if args.logout.unwrap_or(false) {
-            self.logout().await?;
+        match args.command {
+            Commands::Start {
+                project_name,
+                pattern,
+                till,
+            } => {
+                println!("{:?} {:?} {:?}", project_name, pattern, till)
+            }
+            Commands::Logout {} => {
+                println!("logout");
+            }
+            Commands::Stop { at } => {
+                println!("stoping  at {:?}", at);
+            }
         }
+
+        //if args.command.unwrap_or(false) {
+        self.logout().await?;
+        //}
         Ok(())
     }
 
