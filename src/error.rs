@@ -12,6 +12,9 @@ pub enum Error {
     /// Error may occur when handling secrets
     #[error("Secrets Error: `{0}`")]
     KeyringError(#[from] keyring::Error),
+    /// Tracker error
+    #[error("Error: `{0}`")]
+    TrackerError(String),
     /// Custom error
     #[error("Error: `{0}`")]
     CustomError(String),

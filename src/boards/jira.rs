@@ -2,9 +2,9 @@ use async_trait::async_trait;
 use reqwest::{Client, ClientBuilder};
 use strum::{EnumIter, IntoEnumIterator};
 
-use crate::common::{Secrets, helpers};
+use crate::common::{Secrets, helpers, tracker::Tracker};
 use crate::error::{Error, Result};
-use crate::{Args, Commands};
+use crate::{Args, Commands, StartSubcommandA, StartSubcommandB};
 
 use super::Board;
 
@@ -58,6 +58,8 @@ pub struct Jira {
     pub jira_api_token: String,
     pub client: Client,
     pub account_id: String,
+
+    pub tracker: Tracker,
 }
 
 #[async_trait]
@@ -67,8 +69,10 @@ impl Board for Jira {
         let client = ClientBuilder::new()
             .build()
             .expect("Failed to create the HTTP client");
+        let tracker = Tracker::new().await;
         Self {
             client,
+            tracker,
             ..Default::default()
         }
     }
@@ -80,19 +84,26 @@ impl Board for Jira {
                 pattern,
                 till,
             } => {
-                println!("{:?} {:?} {:?}", project_name, pattern, till)
+                let start_and_end = match till.unwrap_or_default() {
+                    StartSubcommandA::Till { till, from } => (till, from.unwrap_or_default()),
+                };
+
+                let end_time = match start_and_end.clone().1 {
+                    StartSubcommandB::From { start } => start,
+                };
+
+                self.tracker
+                    .create_entry(project_name, pattern, start_and_end.0, end_time)
+                    .await?
             }
             Commands::Logout {} => {
-                println!("logout");
+                self.logout().await?;
             }
             Commands::Stop { at } => {
                 println!("stoping  at {:?}", at);
             }
         }
 
-        //if args.command.unwrap_or(false) {
-        self.logout().await?;
-        //}
         Ok(())
     }
 
