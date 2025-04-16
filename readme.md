@@ -1,11 +1,12 @@
 # Jired
+_Yeah, it is a weird name_
 
 A command-line tool for logging time across multiple time tracking platforms including Jira, Clockify, and more.
 
 
 ## Overview
 
-Terminal Time Tracker is a flexible, plugin-based CLI application that allows developers to log time directly from their terminal. The application provides a seamless experience for tracking time spent on tasks, regardless of which time tracking service your organization uses.
+Jired,a plugin-based CLI application that allows developers to log time directly from their terminal. The application provides a seamless experience for tracking time spent on tasks, regardless of which time tracking service your organization uses.
 
 **Status: 🚧 Currently in active development**
 
