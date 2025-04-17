@@ -6,7 +6,7 @@ use crate::error::Result;
 
 /// Tracker provides the time tracking layer for the program, Store records on the local filesystem
 /// and different layers can access the time logs thru tracker
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Tracker {
     /// time logs for each day will be saved on a seperate file
     current_file: String,

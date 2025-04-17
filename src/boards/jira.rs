@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use reqwest::{Client, ClientBuilder};
 use strum::{EnumIter, IntoEnumIterator};
+use tracing::{info, instrument};
 
 use crate::common::{Secrets, helpers, tracker::Tracker};
 use crate::error::{Error, Result};
@@ -50,7 +51,7 @@ impl JiraSearchQuery {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Jira {
     pub authenticated: bool,
     pub server: String,
@@ -78,6 +79,7 @@ impl Board for Jira {
     }
 
     async fn process_arguments(&self, args: Args) -> Result<()> {
+        info!("Processing Arguments");
         match args.command {
             Commands::Start {
                 project_name,
