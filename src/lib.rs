@@ -4,6 +4,7 @@ pub mod clocks;
 pub mod common;
 pub mod error;
 pub mod prelude;
+pub mod tracing;
 
 use clap::{Parser, Subcommand};
 
