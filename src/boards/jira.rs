@@ -86,16 +86,16 @@ impl Board for Jira {
                 pattern,
                 till,
             } => {
-                let start_and_end = match till.unwrap_or_default() {
+                let start_and_end_slice = match till.unwrap_or_default() {
                     StartSubcommandA::Till { till, from } => (till, from.unwrap_or_default()),
                 };
 
-                let end_time = match start_and_end.clone().1 {
+                let end_time = match start_and_end_slice.clone().1 {
                     StartSubcommandB::From { start } => start,
                 };
 
                 self.tracker
-                    .create_entry(project_name, pattern, start_and_end.0, end_time)
+                    .create_entry(project_name, pattern, start_and_end_slice.0, end_time)
                     .await?
             }
             Commands::Logout {} => {
@@ -136,6 +136,7 @@ impl Board for Jira {
         Ok(())
     }
 
+    /// Collects issues on demand
     async fn get_project_issues(&self, project_code: &str) -> Result<()> {
         let query = JiraSearchQuery::IssuesOnProjectQuery.query(
             &self.server,
@@ -143,7 +144,8 @@ impl Board for Jira {
             project_code,
         );
 
-        self.client
+        let response = self
+            .client
             .get(format!(
                 "https://surgeglobal.atlassian.net/rest/api/3/search?{}",
                 query
@@ -151,6 +153,7 @@ impl Board for Jira {
             .basic_auth(self.username.clone(), Some(self.jira_api_token.clone()))
             .send()
             .await?;
+
         Ok(())
     }
 
@@ -158,6 +161,12 @@ impl Board for Jira {
         for secret in JiraSecrets::iter() {
             Secrets::delete(&secret.to_string()).map_err(|e| e)?
         }
+        Ok(())
+    }
+
+    /// TODO: Currently working on this
+    async fn fuzzy_search(&self, project_code: &str, _pattern: &str) -> Result<()> {
+        self.get_project_issues(project_code).await?;
         Ok(())
     }
 }

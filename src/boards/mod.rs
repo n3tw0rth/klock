@@ -11,4 +11,5 @@ pub trait Board {
     async fn get_project_issues(&self, project_code: &str) -> Result<()>;
     async fn process_arguments(&self, args: Args) -> Result<()>;
     async fn logout(&self) -> Result<()>;
+    async fn fuzzy_search(&self, project_code: &str, pattern: &str) -> Result<()>;
 }
