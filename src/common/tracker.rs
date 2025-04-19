@@ -57,8 +57,8 @@ impl Tracker {
     /// Creates a new entry on the log file
     pub async fn create_entry(
         &self,
-        project_code: String,
-        task: String,
+        project_code: &String,
+        task: &String,
         end: String,
         start: String,
     ) -> Result<()> {

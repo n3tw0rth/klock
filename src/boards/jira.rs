@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use reqwest::{Client, ClientBuilder};
 use strum::{EnumIter, IntoEnumIterator};
-use tracing::{info, instrument};
+use tracing::info;
 
 use crate::common::{Secrets, helpers, tracker::Tracker};
 use crate::error::{Error, Result};
@@ -35,7 +35,7 @@ enum JiraSearchQuery {
 /// Implements a query() method on each enum field to return a query string
 impl JiraSearchQuery {
     /// returns the query string for each enum field
-    pub fn query(&self, server: &str, account_id: &str, project: &str) -> String {
+    pub fn query(&self, server: &str, account_id: &str, project: &String) -> String {
         let search_url = format!("https://{}/rest/api/3/search?", server);
         let query_slice = match self {
             JiraSearchQuery::IssuesOnProjectQuery => {
@@ -78,14 +78,15 @@ impl Board for Jira {
         }
     }
 
-    async fn process_arguments(&self, args: Args) -> Result<()> {
+    async fn process_arguments(&mut self, args: Args) -> Result<()> {
         info!("Processing Arguments");
         match args.command {
             Commands::Start {
-                project_name,
+                project_code,
                 pattern,
                 till,
             } => {
+                let search_result = self.fuzzy_search(&project_code, &pattern).await?;
                 let start_and_end_slice = match till.unwrap_or_default() {
                     StartSubcommandA::Till { till, from } => (till, from.unwrap_or_default()),
                 };
@@ -95,7 +96,7 @@ impl Board for Jira {
                 };
 
                 self.tracker
-                    .create_entry(project_name, pattern, start_and_end_slice.0, end_time)
+                    .create_entry(&project_code, &pattern, start_and_end_slice.0, end_time)
                     .await?
             }
             Commands::Logout {} => {
@@ -112,12 +113,14 @@ impl Board for Jira {
     /// check if the user is authenticated by checking if username and the apikeys is_empty()
     /// is unauthenticated the user will prompt to authenticate
     async fn init(mut self, args: Args) -> Result<()> {
-        self.process_arguments(args).await?;
-
         if !(Secrets::get(&JiraSecrets::JiraApiToken.to_string())?.is_empty()
             && Secrets::get(&JiraSecrets::Username.to_string())?.is_empty())
         {
             self.authenticated = true;
+
+            self.username = Secrets::get(&JiraSecrets::Username.to_string())?;
+            self.server = Secrets::get(&JiraSecrets::Server.to_string())?;
+            self.jira_api_token = Secrets::get(&JiraSecrets::JiraApiToken.to_string())?;
         } else {
             helpers::promt_user("enter the atlassian servername")?;
             self.server = helpers::read_stdin()?;
@@ -133,27 +136,26 @@ impl Board for Jira {
             self.find_account_id().await?;
         }
 
+        self.process_arguments(args).await?;
+
         Ok(())
     }
 
     /// Collects issues on demand
-    async fn get_project_issues(&self, project_code: &str) -> Result<()> {
+    async fn get_project_issues(&self, project_code: &String) -> Result<()> {
         let query = JiraSearchQuery::IssuesOnProjectQuery.query(
             &self.server,
             &self.account_id,
-            project_code,
+            &project_code,
         );
 
         let response = self
             .client
-            .get(format!(
-                "https://surgeglobal.atlassian.net/rest/api/3/search?{}",
-                query
-            ))
+            .get(query)
             .basic_auth(self.username.clone(), Some(self.jira_api_token.clone()))
             .send()
             .await?;
-
+        println!("{response:?}");
         Ok(())
     }
 
@@ -165,22 +167,34 @@ impl Board for Jira {
     }
 
     /// TODO: Currently working on this
-    async fn fuzzy_search(&self, project_code: &str, _pattern: &str) -> Result<()> {
+    async fn fuzzy_search(&mut self, project_code: &String, _pattern: &String) -> Result<()> {
         self.get_project_issues(project_code).await?;
         Ok(())
     }
 }
 
 impl Jira {
-    async fn find_account_id(self) -> Result<()> {
+    async fn find_account_id(&mut self) -> Result<()> {
         let myself_url = format!("https://{}/rest/api/3/myself", self.server);
         let response = self
             .client
             .get(myself_url)
-            .basic_auth(self.username, Some(self.jira_api_token))
+            .basic_auth(&self.username, Some(&self.jira_api_token))
             .send()
+            .await?
+            .text()
             .await?;
-        println!("{:?}", response);
+        let json: serde_json::Value = serde_json::from_str(&response)
+            .map_err(|_| Error::CustomError("Error parsing json".to_string()))?;
+
+        self.account_id = json
+            .get("accountId")
+            .ok_or_else(|| Error::CustomError("Missing or invalid 'accountId' field".to_string()))?
+            .to_string();
+        println!(
+            "test: {:?}",
+            json.get("accountId").unwrap_or(&serde_json::Value::Null)
+        );
         Ok(())
     }
 }
