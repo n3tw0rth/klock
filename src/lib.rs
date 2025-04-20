@@ -21,7 +21,7 @@ pub enum Commands {
     Start {
         /// Project short code (eg: ticket id's prefix)
         #[arg(value_name = "projectcode")]
-        project_name: String,
+        project_code: String,
 
         /// Fuzzy text to search the right ticket, so you do not have remember the ticket id to log
         /// time
@@ -77,7 +77,7 @@ impl Default for StartSubcommandA {
 impl Default for StartSubcommandB {
     fn default() -> Self {
         StartSubcommandB::From {
-            start: String::from("-1"),
+            start: String::from(chrono::Local::now().format("%H%M").to_string()),
         }
     }
 }

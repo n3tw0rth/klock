@@ -20,6 +20,12 @@ impl Tracer {
             })
             .unwrap();
 
+        if let Some(parent) = file_path.parent() {
+            if !parent.exists() {
+                fs::create_dir_all(parent)?;
+            }
+        }
+
         let file_layer = tracing_subscriber::fmt::layer().compact().with_writer(
             fs::OpenOptions::new()
                 .append(true)
