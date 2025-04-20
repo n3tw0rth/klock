@@ -3,6 +3,7 @@ use reqwest::{Client, ClientBuilder};
 use strum::{EnumIter, IntoEnumIterator};
 use tracing::info;
 
+use crate::boards::{JiraIssue, JiraIssues};
 use crate::common::{Secrets, helpers, tracker::Tracker};
 use crate::error::{Error, Result};
 use crate::{Args, Commands, StartSubcommandA, StartSubcommandB};
@@ -53,6 +54,8 @@ impl JiraSearchQuery {
 
 #[derive(Default, Debug)]
 pub struct Jira {
+    pub issues: JiraIssues,
+
     pub authenticated: bool,
     pub server: String,
     pub username: String,
@@ -87,6 +90,23 @@ impl Board for Jira {
                 till,
             } => {
                 let search_result = self.fuzzy_search(&project_code, &pattern).await?;
+                let mut task_id = String::new();
+
+                if search_result.len() == 0 {
+                    return Err(Error::CustomError(
+                        "There are no tickets matching your search".to_string(),
+                    ));
+                }
+
+                if search_result.len() != 1 {
+                    task_id = self.pick_issue(search_result).await?;
+                } else {
+                    task_id = match search_result.get(0) {
+                        Some(x) => x.key.clone(),
+                        None => String::new(),
+                    }
+                }
+
                 let start_and_end_slice = match till.unwrap_or_default() {
                     StartSubcommandA::Till { till, from } => (till, from.unwrap_or_default()),
                 };
@@ -95,8 +115,9 @@ impl Board for Jira {
                     StartSubcommandB::From { start } => start,
                 };
 
+                // Write the record into the file
                 self.tracker
-                    .create_entry(&project_code, &pattern, start_and_end_slice.0, end_time)
+                    .create_entry(&project_code, &task_id, start_and_end_slice.0, end_time)
                     .await?
             }
             Commands::Logout {} => {
@@ -108,6 +129,30 @@ impl Board for Jira {
         }
 
         Ok(())
+    }
+
+    /// When there are multiple matches from a fuzzy search, this method will let the user select
+    /// the right issue
+    async fn pick_issue(&self, issues: Vec<JiraIssue>) -> Result<String> {
+        println!("Please select an issue from the list below:\n");
+        issues.iter().enumerate().for_each(|(index, issue)| {
+            println!("{}. {} {}", index + 1, issue.key, issue.fields.summary);
+        });
+
+        helpers::promt_user("please select the correct issues and enter the number here: ")?;
+        let input: usize = helpers::read_stdin()?
+            .trim()
+            .parse()
+            .map_err(|_| Error::CustomError("Please enter a valid number".to_string()))?;
+
+        let selection = issues
+            .get(input - 1)
+            .and_then(|v| Some(&v.key))
+            .expect("please enter a valid value");
+
+        println!("you selected :{selection:?}");
+
+        Ok(selection.clone())
     }
 
     /// check if the user is authenticated by checking if username and the apikeys is_empty()
@@ -132,17 +177,16 @@ impl Board for Jira {
             Secrets::set(&JiraSecrets::Username.to_string(), &self.username)?;
             Secrets::set(&JiraSecrets::JiraApiToken.to_string(), &self.jira_api_token)?;
             Secrets::set(&JiraSecrets::Server.to_string(), &self.server)?;
-
-            self.find_account_id().await?;
         }
 
+        self.find_account_id().await?;
         self.process_arguments(args).await?;
 
         Ok(())
     }
 
     /// Collects issues on demand
-    async fn get_project_issues(&self, project_code: &String) -> Result<()> {
+    async fn get_project_issues(&mut self, project_code: &String) -> Result<()> {
         let query = JiraSearchQuery::IssuesOnProjectQuery.query(
             &self.server,
             &self.account_id,
@@ -152,10 +196,16 @@ impl Board for Jira {
         let response = self
             .client
             .get(query)
-            .basic_auth(self.username.clone(), Some(self.jira_api_token.clone()))
+            .basic_auth(&self.username, Some(&self.jira_api_token))
             .send()
+            .await?
+            .text()
             .await?;
-        println!("{response:?}");
+
+        let json: JiraIssues = serde_json::from_str(&response)
+            .map_err(|_| Error::CustomError("Error parsing issues response to json".to_string()))?;
+
+        self.issues = json;
         Ok(())
     }
 
@@ -166,10 +216,24 @@ impl Board for Jira {
         Ok(())
     }
 
-    /// TODO: Currently working on this
-    async fn fuzzy_search(&mut self, project_code: &String, _pattern: &String) -> Result<()> {
+    /// Search thru all the issues under the specific project and return all the issues match the
+    /// pattern
+    async fn fuzzy_search(
+        &mut self,
+        project_code: &String,
+        pattern: &String,
+    ) -> Result<Vec<JiraIssue>> {
         self.get_project_issues(project_code).await?;
-        Ok(())
+
+        let filtered_issues = self
+            .issues
+            .issues
+            .iter()
+            .filter(|issue| issue.fields.summary.to_lowercase().contains(pattern))
+            .cloned()
+            .collect::<Vec<JiraIssue>>();
+
+        Ok(filtered_issues)
     }
 }
 
@@ -191,10 +255,7 @@ impl Jira {
             .get("accountId")
             .ok_or_else(|| Error::CustomError("Missing or invalid 'accountId' field".to_string()))?
             .to_string();
-        println!(
-            "test: {:?}",
-            json.get("accountId").unwrap_or(&serde_json::Value::Null)
-        );
+
         Ok(())
     }
 }

@@ -77,7 +77,7 @@ impl Default for StartSubcommandA {
 impl Default for StartSubcommandB {
     fn default() -> Self {
         StartSubcommandB::From {
-            start: String::from("-1"),
+            start: String::from(chrono::Local::now().format("%H%M").to_string()),
         }
     }
 }
