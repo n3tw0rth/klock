@@ -1,15 +1,17 @@
+use std::path::PathBuf;
+
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
 
-use crate::error::Error;
-use crate::error::Result;
+use crate::StartSubcommandA;
+use crate::error::{Error, Result};
 
 /// Tracker provides the time tracking layer for the program, Store records on the local filesystem
 /// and different layers can access the time logs thru tracker
 #[derive(Default, Debug)]
 pub struct Tracker {
     /// time logs for each day will be saved on a seperate file
-    current_file: String,
+    file: String,
 }
 
 impl Tracker {
@@ -48,7 +50,7 @@ impl Tracker {
         };
 
         Self {
-            current_file: file_path
+            file: file_path
                 .and_then(|p| p.to_str().map(|s| s.to_string()))
                 .expect("Failed to find the data directory"),
         }
@@ -62,12 +64,29 @@ impl Tracker {
         end: String,
         start: String,
     ) -> Result<()> {
-        println!("{}", self.current_file);
         let mut file = fs::OpenOptions::new()
             .append(true)
             .read(true)
-            .open(&self.current_file)
+            .open(&self.file)
             .await?;
+
+        // if the end time of the task is set to default value, that task is ongoing, those tasks
+        // should be written another file called current.jj
+        if end == "-1" {
+            let mut current_file = PathBuf::from(&self.file)
+                .parent()
+                .expect("Cannot find the parent dir")
+                .to_path_buf();
+
+            current_file.push("current.jj");
+
+            file = fs::OpenOptions::new()
+                .append(true)
+                .read(true)
+                .create(true)
+                .open(current_file)
+                .await?;
+        }
 
         let new_entry = format!("{} {} {} {}\n", project_code, task, end, start);
 
