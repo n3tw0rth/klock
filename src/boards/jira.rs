@@ -124,7 +124,12 @@ impl Board for Jira {
                 self.logout().await?;
             }
             Commands::Stop { at } => {
-                println!("stoping  at {:?}", at);
+                let end_time = match at {
+                    Some(at) => at,
+                    None => String::from("-1"),
+                };
+
+                self.tracker.stop_current(end_time).await?
             }
         }
 

@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use tokio::fs;
-use tokio::io::AsyncWriteExt;
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
 use crate::StartSubcommandA;
 use crate::error::{Error, Result};
@@ -73,18 +73,11 @@ impl Tracker {
         // if the end time of the task is set to default value, that task is ongoing, those tasks
         // should be written another file called current.jj
         if end == "-1" {
-            let mut current_file = PathBuf::from(&self.file)
-                .parent()
-                .expect("Cannot find the parent dir")
-                .to_path_buf();
-
-            current_file.push("current.jj");
-
             file = fs::OpenOptions::new()
                 .append(true)
                 .read(true)
                 .create(true)
-                .open(current_file)
+                .open(self.get_current_file_path().await?)
                 .await?;
         }
 
@@ -93,6 +86,51 @@ impl Tracker {
         file.write_all(new_entry.as_bytes()).await?;
         file.flush().await?;
 
+        Ok(())
+    }
+
+    pub async fn get_current_file_path(&self) -> Result<PathBuf> {
+        let mut current_file = PathBuf::from(&self.file)
+            .parent()
+            .expect("Cannot find the parent dir")
+            .to_path_buf();
+
+        current_file.push("current.jj");
+
+        Ok(current_file)
+    }
+
+    pub async fn stop_current(&self, at: String) -> Result<()> {
+        let file = fs::OpenOptions::new()
+            .append(true)
+            .read(true)
+            .create(true)
+            .open(self.get_current_file_path().await?)
+            .await?;
+        let mut reader = BufReader::new(file);
+
+        let mut line = String::new();
+        reader.read_line(&mut line).await?;
+
+        let tokens: Vec<String> = line.trim().split(" ").map(|v| v.to_string()).collect();
+        let mut end_time = String::new();
+
+        // To stop the current task immediately, when at value is not passed
+        if at.eq("-1") {
+            end_time = chrono::Local::now().format("%H%M").to_string();
+        }
+        // Stop the task on the value at
+        else {
+            end_time = at
+        }
+
+        self.create_entry(
+            tokens.get(0).unwrap(),
+            tokens.get(1).unwrap(),
+            end_time,
+            tokens.get(3).unwrap().to_string(),
+        )
+        .await?;
         Ok(())
     }
 
