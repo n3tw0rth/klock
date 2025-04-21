@@ -1,12 +1,2 @@
-use super::Clock;
-use crate::error::Result;
-struct ClickUpClock {}
+// will be implmented at the latter part of the project, jira and clockify are in the focus
 
-impl Clock for ClickUpClock {
-    async fn new() -> Self {
-        unimplemented!()
-    }
-    async fn log() -> Result<()> {
-        unimplemented!()
-    }
-}

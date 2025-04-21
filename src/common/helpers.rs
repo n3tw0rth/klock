@@ -1,3 +1,5 @@
+use tracing::{info, instrument};
+
 use crate::error::{Error, Result};
 use std::io::Write;
 
@@ -5,19 +7,25 @@ use std::io::Write;
 pub struct Secrets {}
 impl Secrets {
     /// Set keyring secrets
+    #[instrument(skip(secret))]
     pub fn set(key: &str, secret: &String) -> Result<()> {
+        info!("Set keyring secret");
         keyring::Entry::new(env!("CARGO_PKG_NAME"), key)?.set_secret(secret.trim().as_bytes())?;
         Ok(())
     }
 
     /// Get keyring secrets
+    #[instrument]
     pub fn get(key: &str) -> Result<String> {
+        info!("Get keyring secret");
         let secret = keyring::Entry::new(env!("CARGO_PKG_NAME"), key)?.get_secret()?;
         String::from_utf8(secret).map_err(|e| Error::CustomError(e.to_string()))
     }
 
     /// Delete keyring secrets
+    #[instrument]
     pub fn delete(key: &str) -> Result<()> {
+        info!("Delete keyring secret");
         keyring::Entry::new(env!("CARGO_PKG_NAME"), key)?.delete_credential()?;
         Ok(())
     }

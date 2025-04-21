@@ -1,10 +1,12 @@
 use async_trait::async_trait;
 use reqwest::{Client, ClientBuilder};
 use strum::{EnumIter, IntoEnumIterator};
+use tracing::info;
 
-use crate::common::{Secrets, helpers};
+use crate::boards::{JiraIssue, JiraIssues};
+use crate::common::{Secrets, helpers, tracker::Tracker};
 use crate::error::{Error, Result};
-use crate::{Args, Commands};
+use crate::{Args, Commands, StartSubcommandA, StartSubcommandB};
 
 use super::Board;
 
@@ -34,7 +36,7 @@ enum JiraSearchQuery {
 /// Implements a query() method on each enum field to return a query string
 impl JiraSearchQuery {
     /// returns the query string for each enum field
-    pub fn query(&self, server: &str, account_id: &str, project: &str) -> String {
+    pub fn query(&self, server: &str, account_id: &str, project: &String) -> String {
         let search_url = format!("https://{}/rest/api/3/search?", server);
         let query_slice = match self {
             JiraSearchQuery::IssuesOnProjectQuery => {
@@ -50,14 +52,18 @@ impl JiraSearchQuery {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Jira {
+    pub issues: JiraIssues,
+
     pub authenticated: bool,
     pub server: String,
     pub username: String,
     pub jira_api_token: String,
     pub client: Client,
     pub account_id: String,
+
+    pub tracker: Tracker,
 }
 
 #[async_trait]
@@ -67,44 +73,115 @@ impl Board for Jira {
         let client = ClientBuilder::new()
             .build()
             .expect("Failed to create the HTTP client");
+        let tracker = Tracker::new().await;
         Self {
             client,
+            tracker,
             ..Default::default()
         }
     }
 
-    async fn process_arguments(&self, args: Args) -> Result<()> {
+    async fn process_arguments(&mut self, args: Args) -> Result<()> {
+        info!("Processing Arguments");
         match args.command {
             Commands::Start {
-                project_name,
+                project_code,
                 pattern,
                 till,
             } => {
-                println!("{:?} {:?} {:?}", project_name, pattern, till)
+                // check if there is a ongoing task
+                // if there is one first stop that i create the new entry
+                // assumming users do no work on multiple tasks at once
+                //
+                // TODO: it is better to introduce a functionality to work on multiple tasks at the
+                // same time while acknowledging the user that there are muliplt tasks ongoing and
+                // do they want to stop those tasks.
+                // (eg: when starting a new task CLI will show a list of ongoing tasks. and users
+                // can stop individual task using the stop subcommand passing the index of the item
+                // in the list)
+
+                let search_result = self.fuzzy_search(&project_code, &pattern).await?;
+                let mut task_id = String::new();
+
+                if search_result.len() == 0 {
+                    return Err(Error::CustomError(
+                        "There are no tickets matching your search".to_string(),
+                    ));
+                }
+
+                if search_result.len() != 1 {
+                    task_id = self.pick_issue(search_result).await?;
+                } else {
+                    task_id = match search_result.get(0) {
+                        Some(x) => x.key.clone(),
+                        None => String::new(),
+                    }
+                }
+
+                let start_and_end_slice = match till.unwrap_or_default() {
+                    StartSubcommandA::Till { till, from } => (till, from.unwrap_or_default()),
+                };
+
+                let end_time = match start_and_end_slice.clone().1 {
+                    StartSubcommandB::From { start } => start,
+                };
+
+                // Write the record into the file
+                self.tracker
+                    .create_entry(&project_code, &task_id, start_and_end_slice.0, end_time)
+                    .await?
             }
             Commands::Logout {} => {
-                println!("logout");
+                self.logout().await?;
             }
             Commands::Stop { at } => {
-                println!("stoping  at {:?}", at);
+                let end_time = match at {
+                    Some(at) => at,
+                    None => String::from("-1"),
+                };
+
+                self.tracker.stop_current(end_time).await?
             }
         }
 
-        //if args.command.unwrap_or(false) {
-        self.logout().await?;
-        //}
         Ok(())
+    }
+
+    /// When there are multiple matches from a fuzzy search, this method will let the user select
+    /// the right issue
+    async fn pick_issue(&self, issues: Vec<JiraIssue>) -> Result<String> {
+        println!("Please select an issue from the list below:\n");
+        issues.iter().enumerate().for_each(|(index, issue)| {
+            println!("{}. {} {}", index + 1, issue.key, issue.fields.summary);
+        });
+
+        helpers::promt_user("please select the correct issues and enter the number here: ")?;
+        let input: usize = helpers::read_stdin()?
+            .trim()
+            .parse()
+            .map_err(|_| Error::CustomError("Please enter a valid number".to_string()))?;
+
+        let selection = issues
+            .get(input - 1)
+            .and_then(|v| Some(&v.key))
+            .expect("please enter a valid value");
+
+        println!("you selected :{selection:?}");
+
+        Ok(selection.clone())
     }
 
     /// check if the user is authenticated by checking if username and the apikeys is_empty()
     /// is unauthenticated the user will prompt to authenticate
     async fn init(mut self, args: Args) -> Result<()> {
-        self.process_arguments(args).await?;
-
         if !(Secrets::get(&JiraSecrets::JiraApiToken.to_string())?.is_empty()
             && Secrets::get(&JiraSecrets::Username.to_string())?.is_empty())
         {
             self.authenticated = true;
+
+            self.username = Secrets::get(&JiraSecrets::Username.to_string())?;
+            self.server = Secrets::get(&JiraSecrets::Server.to_string())?;
+            self.jira_api_token = Secrets::get(&JiraSecrets::JiraApiToken.to_string())?;
         } else {
             helpers::promt_user("enter the atlassian servername")?;
             self.server = helpers::read_stdin()?;
@@ -116,28 +193,35 @@ impl Board for Jira {
             Secrets::set(&JiraSecrets::Username.to_string(), &self.username)?;
             Secrets::set(&JiraSecrets::JiraApiToken.to_string(), &self.jira_api_token)?;
             Secrets::set(&JiraSecrets::Server.to_string(), &self.server)?;
-
-            self.find_account_id().await?;
         }
+
+        self.find_account_id().await?;
+        self.process_arguments(args).await?;
 
         Ok(())
     }
 
-    async fn get_project_issues(&self, project_code: &str) -> Result<()> {
+    /// Collects issues on demand
+    async fn get_project_issues(&mut self, project_code: &String) -> Result<()> {
         let query = JiraSearchQuery::IssuesOnProjectQuery.query(
             &self.server,
             &self.account_id,
-            project_code,
+            &project_code,
         );
 
-        self.client
-            .get(format!(
-                "https://surgeglobal.atlassian.net/rest/api/3/search?{}",
-                query
-            ))
-            .basic_auth(self.username.clone(), Some(self.jira_api_token.clone()))
+        let response = self
+            .client
+            .get(query)
+            .basic_auth(&self.username, Some(&self.jira_api_token))
             .send()
+            .await?
+            .text()
             .await?;
+
+        let json: JiraIssues = serde_json::from_str(&response)
+            .map_err(|_| Error::CustomError("Error parsing issues response to json".to_string()))?;
+
+        self.issues = json;
         Ok(())
     }
 
@@ -147,18 +231,47 @@ impl Board for Jira {
         }
         Ok(())
     }
+
+    /// Search thru all the issues under the specific project and return all the issues match the
+    /// pattern
+    async fn fuzzy_search(
+        &mut self,
+        project_code: &String,
+        pattern: &String,
+    ) -> Result<Vec<JiraIssue>> {
+        self.get_project_issues(project_code).await?;
+
+        let filtered_issues = self
+            .issues
+            .issues
+            .iter()
+            .filter(|issue| issue.fields.summary.to_lowercase().contains(pattern))
+            .cloned()
+            .collect::<Vec<JiraIssue>>();
+
+        Ok(filtered_issues)
+    }
 }
 
 impl Jira {
-    async fn find_account_id(self) -> Result<()> {
+    async fn find_account_id(&mut self) -> Result<()> {
         let myself_url = format!("https://{}/rest/api/3/myself", self.server);
         let response = self
             .client
             .get(myself_url)
-            .basic_auth(self.username, Some(self.jira_api_token))
+            .basic_auth(&self.username, Some(&self.jira_api_token))
             .send()
+            .await?
+            .text()
             .await?;
-        println!("{:?}", response);
+        let json: serde_json::Value = serde_json::from_str(&response)
+            .map_err(|_| Error::CustomError("Error parsing json".to_string()))?;
+
+        self.account_id = json
+            .get("accountId")
+            .ok_or_else(|| Error::CustomError("Missing or invalid 'accountId' field".to_string()))?
+            .to_string();
+
         Ok(())
     }
 }

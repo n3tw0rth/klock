@@ -4,6 +4,7 @@ pub mod clocks;
 pub mod common;
 pub mod error;
 pub mod prelude;
+pub mod tracing;
 
 use clap::{Parser, Subcommand};
 
@@ -20,7 +21,7 @@ pub enum Commands {
     Start {
         /// Project short code (eg: ticket id's prefix)
         #[arg(value_name = "projectcode")]
-        project_name: String,
+        project_code: String,
 
         /// Fuzzy text to search the right ticket, so you do not have remember the ticket id to log
         /// time
@@ -41,7 +42,7 @@ pub enum Commands {
     Logout,
 }
 
-#[derive(Debug, Subcommand)]
+#[derive(Debug, Clone, Subcommand)]
 pub enum StartSubcommandA {
     /// You can specify the time, will argument passed program will create the entry at once,
     /// no  evaluations are done again
@@ -54,7 +55,7 @@ pub enum StartSubcommandA {
     },
 }
 
-#[derive(Debug, Subcommand)]
+#[derive(Debug, Clone, Subcommand)]
 pub enum StartSubcommandB {
     /// Can use this argument to start the task at some point of the day instead of the current
     /// system time
@@ -62,4 +63,21 @@ pub enum StartSubcommandB {
         #[arg(value_name = "FROM")]
         start: String,
     },
+}
+
+impl Default for StartSubcommandA {
+    fn default() -> Self {
+        StartSubcommandA::Till {
+            till: String::from("-1"),
+            from: Some(StartSubcommandB::default()),
+        }
+    }
+}
+
+impl Default for StartSubcommandB {
+    fn default() -> Self {
+        StartSubcommandB::From {
+            start: String::from(chrono::Local::now().format("%H%M").to_string()),
+        }
+    }
 }
