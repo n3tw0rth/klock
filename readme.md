@@ -49,6 +49,24 @@ jj start <project-code> <fuzzy-text> from 1800 till 1935 // end time is 07:35 PM
 jj set <data> // data format is yyyy-mm-dd
 ```
 
+## Running with Docker
+
+You can also try Jired through Docker:
+
+```bash
+# Build the image (if not already built)
+docker build -t jired .
+
+# Run the app
+docker run -it --rm jired bash
+```
+
+Or use the prebuilt image from GHCR
+
+```bash
+docker run -it --rm ghcr.io/n3tw0rth/jired:main bash
+```
+
 ## Provider Plugins (WIP)
 
 - **Jira**: Log work directly to Jira issues
