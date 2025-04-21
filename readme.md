@@ -59,12 +59,14 @@ docker build -t jired .
 
 # Run the app
 docker run -it --rm jired bash
+$: jired help
 ```
 
 Or use the prebuilt image from GHCR
 
 ```bash
 docker run -it --rm ghcr.io/n3tw0rth/jired:main bash
+$: jired help
 ```
 
 ## Provider Plugins (WIP)
