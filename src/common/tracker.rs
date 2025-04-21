@@ -1,15 +1,17 @@
-use tokio::fs;
-use tokio::io::AsyncWriteExt;
+use std::path::PathBuf;
 
-use crate::error::Error;
-use crate::error::Result;
+use tokio::fs;
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+
+use crate::StartSubcommandA;
+use crate::error::{Error, Result};
 
 /// Tracker provides the time tracking layer for the program, Store records on the local filesystem
 /// and different layers can access the time logs thru tracker
 #[derive(Default, Debug)]
 pub struct Tracker {
     /// time logs for each day will be saved on a seperate file
-    current_file: String,
+    file: String,
 }
 
 impl Tracker {
@@ -48,7 +50,7 @@ impl Tracker {
         };
 
         Self {
-            current_file: file_path
+            file: file_path
                 .and_then(|p| p.to_str().map(|s| s.to_string()))
                 .expect("Failed to find the data directory"),
         }
@@ -62,12 +64,22 @@ impl Tracker {
         end: String,
         start: String,
     ) -> Result<()> {
-        println!("{}", self.current_file);
         let mut file = fs::OpenOptions::new()
             .append(true)
             .read(true)
-            .open(&self.current_file)
+            .open(&self.file)
             .await?;
+
+        // if the end time of the task is set to default value, that task is ongoing, those tasks
+        // should be written another file called current.jj
+        if end == "-1" {
+            file = fs::OpenOptions::new()
+                .append(true)
+                .read(true)
+                .create(true)
+                .open(self.get_current_file_path().await?)
+                .await?;
+        }
 
         let new_entry = format!("{} {} {} {}\n", project_code, task, end, start);
 
@@ -77,10 +89,57 @@ impl Tracker {
         Ok(())
     }
 
-    /// Manages the current ongoing tasks state till it stops
-    /// the state will be mantained in a different file named current.jj
-    pub async fn handle_current_task(&self) {
-        unimplemented!()
+    pub async fn get_current_file_path(&self) -> Result<PathBuf> {
+        let mut current_file = PathBuf::from(&self.file)
+            .parent()
+            .expect("Cannot find the parent dir")
+            .to_path_buf();
+
+        current_file.push("current.jj");
+
+        Ok(current_file)
+    }
+
+    /// Stops the current ongoing task, will be used mostly with the stop subcommand
+    pub async fn stop_current(&self, at: String) -> Result<()> {
+        let file = fs::OpenOptions::new()
+            .append(true)
+            .read(true)
+            .create(true)
+            .open(self.get_current_file_path().await?)
+            .await?;
+        let mut reader = BufReader::new(file);
+
+        let mut line = String::new();
+        reader.read_line(&mut line).await?;
+
+        let tokens: Vec<String> = line.trim().split(" ").map(|v| v.to_string()).collect();
+        let mut end_time = String::new();
+
+        // To stop the current task immediately, when at value is not passed
+        if at.eq("-1") {
+            end_time = chrono::Local::now().format("%H%M").to_string();
+        }
+        // Stop the task on the value at
+        else {
+            end_time = at
+        }
+
+        self.create_entry(
+            tokens.get(0).unwrap(),
+            tokens.get(1).unwrap(),
+            end_time,
+            tokens.get(3).unwrap().to_string(),
+        )
+        .await?;
+        Ok(())
+    }
+
+    /// This method is used to forcefully stop a ongoing tasks assuming users will not work on
+    /// multiple projects at once
+    pub async fn force_terminate_tasks(&self) -> Result<()> {
+        self.stop_current(String::from("-1")).await?;
+        Ok(())
     }
 
     /// Let the user to open up a log file to edit manually

@@ -89,6 +89,17 @@ impl Board for Jira {
                 pattern,
                 till,
             } => {
+                // check if there is a ongoing task
+                // if there is one first stop that i create the new entry
+                // assumming users do no work on multiple tasks at once
+                //
+                // TODO: it is better to introduce a functionality to work on multiple tasks at the
+                // same time while acknowledging the user that there are muliplt tasks ongoing and
+                // do they want to stop those tasks.
+                // (eg: when starting a new task CLI will show a list of ongoing tasks. and users
+                // can stop individual task using the stop subcommand passing the index of the item
+                // in the list)
+
                 let search_result = self.fuzzy_search(&project_code, &pattern).await?;
                 let mut task_id = String::new();
 
@@ -124,7 +135,12 @@ impl Board for Jira {
                 self.logout().await?;
             }
             Commands::Stop { at } => {
-                println!("stoping  at {:?}", at);
+                let end_time = match at {
+                    Some(at) => at,
+                    None => String::from("-1"),
+                };
+
+                self.tracker.stop_current(end_time).await?
             }
         }
 
