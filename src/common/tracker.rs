@@ -100,6 +100,7 @@ impl Tracker {
         Ok(current_file)
     }
 
+    /// Stops the current ongoing task, will be used mostly with the stop subcommand
     pub async fn stop_current(&self, at: String) -> Result<()> {
         let file = fs::OpenOptions::new()
             .append(true)
@@ -134,10 +135,11 @@ impl Tracker {
         Ok(())
     }
 
-    /// Manages the current ongoing tasks state till it stops
-    /// the state will be mantained in a different file named current.jj
-    pub async fn handle_current_task(&self) {
-        unimplemented!()
+    /// This method is used to forcefully stop a ongoing tasks assuming users will not work on
+    /// multiple projects at once
+    pub async fn force_terminate_tasks(&self) -> Result<()> {
+        self.stop_current(String::from("-1")).await?;
+        Ok(())
     }
 
     /// Let the user to open up a log file to edit manually
