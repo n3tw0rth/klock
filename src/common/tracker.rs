@@ -2,8 +2,8 @@ use std::path::PathBuf;
 
 use tokio::fs;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tracing::{info, instrument};
 
-use crate::StartSubcommandA;
 use crate::error::{Error, Result};
 
 /// Tracker provides the time tracking layer for the program, Store records on the local filesystem
@@ -57,6 +57,7 @@ impl Tracker {
     }
 
     /// Creates a new entry on the log file
+    #[instrument]
     pub async fn create_entry(
         &self,
         project_code: &String,
@@ -101,7 +102,9 @@ impl Tracker {
     }
 
     /// Stops the current ongoing task, will be used mostly with the stop subcommand
+    #[instrument(skip(self))]
     pub async fn stop_current(&self, at: String) -> Result<()> {
+        info!("stopping the current task");
         let file = fs::OpenOptions::new()
             .append(true)
             .read(true)
@@ -132,6 +135,15 @@ impl Tracker {
             tokens.get(3).unwrap().to_string(),
         )
         .await?;
+
+        // Drop the file handle before truncating
+        drop(reader.into_inner());
+
+        fs::OpenOptions::new()
+            .write(true)
+            .truncate(true)
+            .open(self.get_current_file_path().await?)
+            .await?;
         Ok(())
     }
 

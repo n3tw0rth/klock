@@ -54,7 +54,7 @@ impl JiraSearchQuery {
 
 #[derive(Default, Debug)]
 pub struct Jira {
-    pub issues: JiraIssues,
+    issues: JiraIssues,
 
     pub authenticated: bool,
     pub server: String,
@@ -240,12 +240,20 @@ impl Board for Jira {
         pattern: &String,
     ) -> Result<Vec<JiraIssue>> {
         self.get_project_issues(project_code).await?;
-
+        info!("searching for pattern {pattern:?}");
         let filtered_issues = self
             .issues
             .issues
             .iter()
-            .filter(|issue| issue.fields.summary.to_lowercase().contains(pattern))
+            .filter(|issue| {
+                let is_inprogess = issue
+                    .fields
+                    .status_category
+                    .get("name")
+                    .unwrap_or(&serde_json::Value::default())
+                    .eq("In Progress");
+                issue.fields.summary.to_lowercase().contains(pattern) && is_inprogess
+            })
             .cloned()
             .collect::<Vec<JiraIssue>>();
 
