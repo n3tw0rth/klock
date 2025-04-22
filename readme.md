@@ -1,30 +1,30 @@
 # Jired
+
 _Yeah, it is a weird name_
 
 A command-line tool for logging time across multiple time tracking platforms including Jira, Clockify, and more.
 
-
 ## Overview
 
-Jired,a plugin-based CLI application that allows developers to log time directly from their terminal. The application provides a seamless experience for tracking time spent on tasks, regardless of which time tracking service your organization uses.
+Jired, a plugin-based CLI application that allows developers to log time directly from their terminal. The application provides a seamless experience for tracking time spent on tasks, regardless of which time tracking service your organization uses.
 
 **Status: 🚧 Currently in active development**
 
 ## Features
 
 - Simple command-line interface for time tracking
-- multiple time logging providers:
+- Multiple time logging providers:
   - Jira
   - Clockify
   - _More coming soon_
-- fuzzy search tasks
-- natural language like arguments
-- report generation
+- Fuzzy search tasks
+- Natural language-like arguments
+- Report generation
 
 ## Installation
 
 ```bash
-# Wait!,The project is still in development
+# Wait!, The project is still in development
 ```
 
 ## Quick Start
@@ -41,13 +41,32 @@ jj stop
 # Task with start and end time
 jj start <project-code> <fuzzy-text> from 1800 till 1935 // end time is 07:35 PM
 
-if from is not specified, the start time is set to the current time
-if from is specified, but till is not, the end time will not be set
+# if from is not specified, the start time is set to the current time
+# if from is specified, but till is not, the end time will not be set
 
-
-deafult scope is set to "today" and any time log will be added to the current day
-the scope can be changed to any date using the following syntax
+# default scope is set to "today" and any time log will be added to the current day
+# the scope can be changed to any date using the following syntax
 jj set <data> // data format is yyyy-mm-dd
+```
+
+## Running with Docker
+
+You can also try Jired through Docker:
+
+```bash
+# Build the image (if not already built)
+docker build -t jired .
+
+# Run the app
+docker run -it --rm jired bash
+$: jired help
+```
+
+Or use the prebuilt image from GHCR
+
+```bash
+docker run -it --rm ghcr.io/n3tw0rth/jired:main bash
+$: jired help
 ```
 
 ## Provider Plugins (WIP)
@@ -55,7 +74,7 @@ jj set <data> // data format is yyyy-mm-dd
 - **Jira**: Log work directly to Jira issues
 - **Clockify**: Track time in Clockify
 
--- providers can be combined, logging to multiple providers at once
+-- Providers can be combined, logging to multiple providers at once
 
 ## Configuration
 
