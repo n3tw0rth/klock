@@ -26,7 +26,7 @@ use serde::Deserialize;
 
 #[derive(Deserialize, Debug, Default, Clone)]
 struct JiraIssues {
-    pub issues: Vec<JiraIssue>,
+    issues: Vec<JiraIssue>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
