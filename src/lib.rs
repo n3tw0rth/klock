@@ -40,6 +40,11 @@ pub enum Commands {
     },
     /// Logout, removing the secrets
     Logout,
+    /// Set the time on the current terminal session
+    Set {
+        /// Date (YYYY-MM-DD)
+        date: String,
+    },
 }
 
 #[derive(Debug, Clone, Subcommand)]
