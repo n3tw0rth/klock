@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use regex::Regex;
 use reqwest::{Client, ClientBuilder};
 use strum::{EnumIter, IntoEnumIterator};
 use tracing::info;
@@ -141,6 +142,32 @@ impl Board for Jira {
                 };
 
                 self.tracker.stop_current(end_time).await?
+            }
+            Commands::Set { date } => {
+                let re = Regex::new(r"^\d{4}-\d{2}-\d{2}$")
+                    .map_err(|e| Error::CustomError(e.to_string()))?;
+
+                if !re.is_match(&date) {
+                    return Err(Error::CustomError(
+                        "invalid time format. Support only YYYY-MM-DD".to_string(),
+                    ));
+                } else {
+                    // Get the current operating system
+                    let os = std::env::consts::OS;
+
+                    // Print the appropriate command based on the OS
+                    match os {
+                        "linux" | "macos" => {
+                            println!("export {}={}", "JIRED_CURRENT_TIME", date);
+                        }
+                        "windows" => {
+                            println!("set {}={}", "JIRED_CURRENT_TIME", date);
+                        }
+                        _ => {
+                            Error::CustomError(format!("Unsupported OS {os}"));
+                        }
+                    }
+                }
             }
         }
 
