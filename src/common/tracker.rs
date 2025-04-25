@@ -16,7 +16,8 @@ pub struct Tracker {
 
 impl Tracker {
     pub async fn new() -> Self {
-        let mut filename: String = chrono::Local::now().format("%Y-%m-%d").to_string();
+        let mut filename: String = std::env::var("JIRED_CURRENT_TIME")
+            .unwrap_or(chrono::Local::now().format("%Y-%m-%d").to_string());
 
         filename.push_str(".jj");
 
