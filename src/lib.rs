@@ -1,4 +1,3 @@
-pub mod app;
 pub mod boards;
 pub mod clocks;
 pub mod common;
@@ -45,6 +44,8 @@ pub enum Commands {
         /// Date (YYYY-MM-DD)
         date: String,
     },
+    /// Log time to the clocks
+    Log,
 }
 
 #[derive(Debug, Clone, Subcommand)]

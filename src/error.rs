@@ -15,6 +15,9 @@ pub enum Error {
     /// Tracker error
     #[error("Error: `{0}`")]
     TrackerError(String),
+    /// Clockify error
+    #[error("{0}")]
+    ClockifyError(String),
     /// Custom error
     #[error("Error: `{0}`")]
     CustomError(String),
