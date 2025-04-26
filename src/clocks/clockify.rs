@@ -1,10 +1,10 @@
 use async_trait::async_trait;
-use reqwest::{Client, ClientBuilder, Url};
+use reqwest::{Client, ClientBuilder};
+use serde::Deserialize;
 use strum::EnumIter;
 use tracing::info;
 
 use super::Clock;
-use crate::Args;
 use crate::common::{Secrets, helpers};
 use crate::error::{Error::ClockifyError, Result};
 
@@ -36,6 +36,7 @@ impl Clock for ClockifyClock {
 
         if !api_token.is_empty() {
             self.authenticated = true;
+            self.api_token = api_token;
         } else {
             helpers::promt_user("enter the atlassian servername")?;
             self.api_token = helpers::read_stdin()?;
@@ -60,7 +61,6 @@ impl ClockifyClock {
         let mut url = BASE_URL.to_string();
         url.push_str("/workspaces");
 
-        println!("{url}");
         let response = self
             .client
             .get(url)
@@ -73,7 +73,16 @@ impl ClockifyClock {
         let json = serde_json::from_str::<serde_json::Value>(&response)
             .map_err(|_| ClockifyError("Error parsing issues response to json".to_string()))?;
 
-        println!("{:?}", self.api_token.clone());
+        let workspace_id = json
+            .get(0)
+            .unwrap_or(&serde_json::Value::Null)
+            .get("id")
+            .unwrap_or(&serde_json::Value::Null);
+
+        Secrets::set(
+            &ClockifySecrets::WorkspaceId.to_string(),
+            &workspace_id.to_string(),
+        )?;
 
         Ok(())
     }
@@ -93,6 +102,9 @@ impl std::fmt::Display for ClockifySecrets {
     }
 }
 
+#[derive(Deserialize, Debug, Clone)]
 struct ClockifyTimeEntryPayload {
     billable: bool,
+    #[serde(rename = "workspaceId")]
+    workspace_id: String,
 }
