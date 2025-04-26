@@ -8,7 +8,7 @@ use toml;
 use crate::error::{Error::CustomError, Result};
 
 pub struct ConfigParser {
-    config: AppConfig,
+    pub config: AppConfig,
 }
 
 impl ConfigParser {
@@ -19,6 +19,7 @@ impl ConfigParser {
 
         let mut content = String::new();
         let mut file = File::open(&config_file).await?;
+
         file.read_to_string(&mut content)
             .await
             .map_err(|e| CustomError(e.to_string()))?;
@@ -28,6 +29,10 @@ impl ConfigParser {
         Ok(Self {
             config: AppConfig::default(),
         })
+    }
+
+    pub fn get_clocks(self) -> Result<Vec<String>> {
+        Ok(self.config.clocks)
     }
 }
 
