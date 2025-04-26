@@ -301,6 +301,7 @@ impl Jira {
             .await?
             .text()
             .await?;
+
         let json: serde_json::Value = serde_json::from_str(&response)
             .map_err(|_| Error::CustomError("Error parsing json".to_string()))?;
 

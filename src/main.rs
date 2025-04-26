@@ -1,8 +1,7 @@
 use clap::Parser;
 use jired::{
-    Args,
-    boards::Board,
-    boards::jira::Jira,
+    Args, Commands,
+    boards::{Board, jira::Jira},
     clocks::{Clock, clockify::ClockifyClock},
     common::config::ConfigParser,
     error::Result,
@@ -12,12 +11,25 @@ use jired::{
 #[tokio::main]
 async fn main() -> Result<()> {
     Tracer::init()?;
+    let config = ConfigParser::parse().await?;
     let args = Args::parse();
 
-    // commented to test the clockify
-    //Jira::new().await.init(args).await?;
-    //
-    ConfigParser::parse().await?;
-    //ClockifyClock::new().await.init().await?;
+    match args.command {
+        Commands::Log => {
+            let clocks = config.get_clocks()?;
+            for clock in clocks {
+                match clock.as_str() {
+                    "clockify" => {
+                        ClockifyClock::new().await.init().await?;
+                    }
+                    _ => {}
+                }
+            }
+        }
+        _ => {
+            Jira::new().await.init(args.clone()).await?;
+        }
+    }
+
     Ok(())
 }
