@@ -169,6 +169,7 @@ impl Board for Jira {
                     }
                 }
             }
+            _ => {}
         }
 
         Ok(())
@@ -201,9 +202,10 @@ impl Board for Jira {
     /// check if the user is authenticated by checking if username and the apikeys is_empty()
     /// is unauthenticated the user will prompt to authenticate
     async fn init(mut self, args: Args) -> Result<()> {
-        if !(Secrets::get(&JiraSecrets::JiraApiToken.to_string())?.is_empty()
-            && Secrets::get(&JiraSecrets::Username.to_string())?.is_empty())
-        {
+        let jira_api_token = Secrets::get(&JiraSecrets::JiraApiToken.to_string())?;
+        let username = Secrets::get(&JiraSecrets::Username.to_string())?;
+
+        if !jira_api_token.is_empty() && !username.is_empty() {
             self.authenticated = true;
 
             self.username = Secrets::get(&JiraSecrets::Username.to_string())?;
@@ -299,6 +301,7 @@ impl Jira {
             .await?
             .text()
             .await?;
+
         let json: serde_json::Value = serde_json::from_str(&response)
             .map_err(|_| Error::CustomError("Error parsing json".to_string()))?;
 

@@ -61,6 +61,7 @@ impl Tracker {
         end: String,
         start: String,
     ) -> Result<()> {
+        println!("logging time for {}", task);
         let mut file = fs::OpenOptions::new()
             .append(true)
             .read(true)

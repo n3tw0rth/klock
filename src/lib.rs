@@ -1,4 +1,3 @@
-pub mod app;
 pub mod boards;
 pub mod clocks;
 pub mod common;
@@ -8,14 +7,14 @@ pub mod tracing;
 
 use clap::{Parser, Subcommand};
 
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 #[command(version, about, long_about = None)]
 pub struct Args {
     #[command(subcommand)]
     pub command: Commands,
 }
 
-#[derive(Debug, Subcommand)]
+#[derive(Debug, Clone, Subcommand)]
 pub enum Commands {
     /// Define when a task starts
     Start {
@@ -45,6 +44,8 @@ pub enum Commands {
         /// Date (YYYY-MM-DD)
         date: String,
     },
+    /// Log time to the clocks
+    Log,
 }
 
 #[derive(Debug, Clone, Subcommand)]
