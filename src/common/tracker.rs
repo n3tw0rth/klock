@@ -6,16 +6,19 @@ use tracing::{info, instrument};
 
 use crate::error::{Error, Result};
 
+use super::config::{AppConfig, ConfigParser};
+
 /// Tracker provides the time tracking layer for the program, Store records on the local filesystem
 /// and different layers can access the time logs thru tracker
 #[derive(Default, Debug)]
 pub struct Tracker {
     /// time logs for each day will be saved on a seperate file
     file: String,
+    config: AppConfig,
 }
 
 impl Tracker {
-    pub async fn new() -> Self {
+    pub async fn new() -> Result<Self> {
         let mut filename: String = std::env::var("JIRED_CURRENT_TIME")
             .unwrap_or(chrono::Local::now().format("%Y-%m-%d").to_string());
 
@@ -45,11 +48,17 @@ impl Tracker {
             Error::TrackerError("Cannot find the data directory in the host".to_string());
         };
 
-        Self {
+        let config = ConfigParser::parse()
+            .await
+            .map_err(|e| Error::CustomError(e.to_string()))?
+            .config;
+
+        Ok(Self {
             file: file_path
                 .and_then(|p| p.to_str().map(|s| s.to_string()))
                 .expect("Failed to find the data directory"),
-        }
+            config,
+        })
     }
 
     /// Creates a new entry on the log file
@@ -126,7 +135,7 @@ impl Tracker {
         }
 
         self.create_entry(
-            tokens.get(0).unwrap(),
+            tokens.first().unwrap(),
             tokens.get(1).unwrap(),
             end_time,
             tokens.get(3).unwrap().to_string(),

@@ -30,15 +30,16 @@ struct JiraIssues {
 }
 
 #[derive(Deserialize, Debug, Clone)]
-struct JiraIssue {
-    #[serde(rename = "self")]
-    pub id: String,
+pub struct JiraIssue {
+    //
+    //#[serde(rename = "self")]
+    //pub id: String,
     pub key: String,
     pub fields: JiraIssueFields,
 }
 
 #[derive(Deserialize, Debug, Clone)]
-struct JiraIssueFields {
+pub struct JiraIssueFields {
     summary: String,
     #[serde(rename = "statusCategory")]
     status_category: serde_json::Value,
