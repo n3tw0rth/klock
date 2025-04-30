@@ -1,4 +1,4 @@
-use tracing::{info, instrument};
+use tracing::info;
 
 use crate::error::{Error, Result};
 use std::io::Write;
@@ -7,7 +7,7 @@ use std::io::Write;
 pub struct Secrets {}
 impl Secrets {
     /// Set keyring secrets
-    pub fn set(key: &str, secret: &String) -> Result<()> {
+    pub fn set(key: &str, secret: &str) -> Result<()> {
         info!("Set keyring secret");
         keyring::Entry::new(env!("CARGO_PKG_NAME"), key)?.set_secret(secret.trim().as_bytes())?;
         Ok(())

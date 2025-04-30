@@ -18,11 +18,8 @@ async fn main() -> Result<()> {
         Commands::Log => {
             let clocks = config.get_clocks()?;
             for clock in clocks {
-                match clock.as_str() {
-                    "clockify" => {
-                        ClockifyClock::new().await.init().await?;
-                    }
-                    _ => {}
+                if clock.as_str() == "clockify" {
+                    ClockifyClock::new().await.init().await?;
                 }
             }
         }

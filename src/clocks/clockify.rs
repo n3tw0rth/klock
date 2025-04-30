@@ -1,6 +1,5 @@
 use async_trait::async_trait;
 use reqwest::{Client, ClientBuilder};
-use serde::Deserialize;
 use strum::EnumIter;
 use tracing::info;
 
@@ -31,8 +30,7 @@ impl Clock for ClockifyClock {
     }
 
     async fn init(&mut self) -> Result<()> {
-        let api_token =
-            Secrets::get(&ClockifySecrets::ApiToken.to_string()).unwrap_or(String::new());
+        let api_token = Secrets::get(&ClockifySecrets::ApiToken.to_string()).unwrap_or_default();
 
         if !api_token.is_empty() {
             self.authenticated = true;
@@ -45,7 +43,7 @@ impl Clock for ClockifyClock {
         }
 
         // get the workspace
-        self.set_workspaceId().await?;
+        self.set_workspace_id().await?;
         Ok(())
     }
 
@@ -56,7 +54,7 @@ impl Clock for ClockifyClock {
 
 impl ClockifyClock {
     /// This will collect and store the clockify workspace id in the keyring
-    pub async fn set_workspaceId(&self) -> Result<()> {
+    pub async fn set_workspace_id(&self) -> Result<()> {
         info!("requesting the workspace id");
         let mut url = BASE_URL.to_string();
         url.push_str("/workspaces");
@@ -102,9 +100,10 @@ impl std::fmt::Display for ClockifySecrets {
     }
 }
 
-#[derive(Deserialize, Debug, Clone)]
-struct ClockifyTimeEntryPayload {
-    billable: bool,
-    #[serde(rename = "workspaceId")]
-    workspace_id: String,
-}
+// TODO: Temporarily commented out – planned for future use.
+//#[derive(Deserialize, Debug, Clone)]
+//pub struct ClockifyTimeEntryPayload {
+//    billable: bool,
+//    #[serde(rename = "workspaceId")]
+//    workspace_id: String,
+//}
