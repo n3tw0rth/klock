@@ -294,8 +294,8 @@ impl Board for Jira {
 impl Jira {
     async fn find_account_id(&mut self) -> Result<()> {
         info!("finding user jira account id");
-        println!("{}", self.jira_api_token);
         let myself_url = format!("https://{}/rest/api/3/myself", self.server);
+
         let response = self
             .client
             .get(myself_url)
@@ -316,13 +316,18 @@ impl Jira {
                 .to_string();
             Ok(())
         } else {
-            // Optionally, read the error body for details
             let status = response.status();
-            let err_body = response.text().await?;
-            Err(Error::CustomError(format!(
-                "Request failed with status {}: {}",
-                status, err_body
-            )))
+            // update the jira token when the token is expired
+            // FIXME: better to check specifically for 401 error instead of looking for 4xx status
+            // codes
+            if status.is_client_error() {
+                helpers::promt_user("enter jira api key below: ")?;
+                self.jira_api_token = helpers::read_stdin()?;
+                Secrets::set(&JiraSecrets::JiraApiToken.to_string(), &self.jira_api_token)?;
+            }
+            Err(Error::CustomError(
+                "Your token was expired, please try again".to_string(),
+            ))
         }?;
         Ok(())
     }
