@@ -40,7 +40,7 @@ impl ConfigParser {
 #[derive(Default, Deserialize, Debug)]
 pub struct AppConfig {
     clocks: Vec<String>,
-    editor: Option<String>,
+    pub editor: Option<String>,
     // TODO: Temporarily commented out – planned for future use.
     // project: Option<ProjectCodes>,
 }
