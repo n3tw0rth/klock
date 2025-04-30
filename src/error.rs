@@ -19,7 +19,7 @@ pub enum Error {
     #[error("{0}")]
     ClockifyError(String),
     /// Custom error
-    #[error("Error: `{0}`")]
+    #[error("{0}")]
     CustomError(String),
 }
 

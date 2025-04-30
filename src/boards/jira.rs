@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use regex::Regex;
 use reqwest::{Client, ClientBuilder};
 use strum::{EnumIter, IntoEnumIterator};
-use tracing::info;
+use tracing::{error, info};
 
 use crate::boards::{JiraIssue, JiraIssues};
 use crate::common::{Secrets, helpers, tracker::Tracker};
@@ -74,7 +74,7 @@ impl Board for Jira {
         let client = ClientBuilder::new()
             .build()
             .expect("Failed to create the HTTP client");
-        let tracker = Tracker::new().await;
+        let tracker = Tracker::new().await.expect("failed to create the tracker");
         Self {
             client,
             tracker,
@@ -169,6 +169,7 @@ impl Board for Jira {
                     }
                 }
             }
+            Commands::Edit => self.tracker.open_editor().await,
             _ => {}
         }
 
@@ -292,24 +293,42 @@ impl Board for Jira {
 
 impl Jira {
     async fn find_account_id(&mut self) -> Result<()> {
+        info!("finding user jira account id");
         let myself_url = format!("https://{}/rest/api/3/myself", self.server);
+
         let response = self
             .client
             .get(myself_url)
             .basic_auth(&self.username, Some(&self.jira_api_token))
             .send()
-            .await?
-            .text()
             .await?;
 
-        let json: serde_json::Value = serde_json::from_str(&response)
-            .map_err(|_| Error::CustomError("Error parsing json".to_string()))?;
+        if response.status().is_success() {
+            let body = response.text().await?;
+            let json: serde_json::Value = serde_json::from_str(&body)
+                .map_err(|_| Error::CustomError("Failed to get the jira account id".to_string()))?;
 
-        self.account_id = json
-            .get("accountId")
-            .ok_or_else(|| Error::CustomError("Missing or invalid 'accountId' field".to_string()))?
-            .to_string();
-
+            self.account_id = json
+                .get("accountId")
+                .ok_or_else(|| {
+                    Error::CustomError("Missing or invalid 'accountId' field".to_string())
+                })?
+                .to_string();
+            Ok(())
+        } else {
+            let status = response.status();
+            // update the jira token when the token is expired
+            // FIXME: better to check specifically for 401 error instead of looking for 4xx status
+            // codes
+            if status.is_client_error() {
+                helpers::promt_user("enter jira api key below: ")?;
+                self.jira_api_token = helpers::read_stdin()?;
+                Secrets::set(&JiraSecrets::JiraApiToken.to_string(), &self.jira_api_token)?;
+            }
+            Err(Error::CustomError(
+                "Your token was expired, please try again".to_string(),
+            ))
+        }?;
         Ok(())
     }
 }

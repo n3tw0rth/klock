@@ -1,6 +1,5 @@
 use dirs::config_dir;
 use serde::Deserialize;
-use std::collections::HashMap;
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
 use toml;
@@ -26,23 +25,28 @@ impl ConfigParser {
 
         let config: AppConfig = toml::from_str(&content).map_err(|e| CustomError(e.to_string()))?;
 
-        Ok(Self {
-            config: AppConfig::default(),
-        })
+        Ok(Self { config })
     }
 
     pub fn get_clocks(self) -> Result<Vec<String>> {
         Ok(self.config.clocks)
     }
+
+    pub fn get_editor(self) -> Result<String> {
+        Ok(self.config.editor.unwrap_or("".to_string()))
+    }
 }
 
 #[derive(Default, Deserialize, Debug)]
-struct AppConfig {
+pub struct AppConfig {
     clocks: Vec<String>,
-    project: Option<ProjectCodes>,
+    editor: Option<String>,
+    // TODO: Temporarily commented out – planned for future use.
+    // project: Option<ProjectCodes>,
 }
 
 #[derive(Default, Deserialize, Debug)]
 struct ProjectCodes {
-    codes: HashMap<String, String>,
+    // TODO: Temporarily commented out – planned for future use.
+    // codes: HashMap<String, String>,
 }

@@ -46,6 +46,8 @@ pub enum Commands {
     },
     /// Log time to the clocks
     Log,
+    /// Edit the log file
+    Edit,
 }
 
 #[derive(Debug, Clone, Subcommand)]
@@ -83,7 +85,7 @@ impl Default for StartSubcommandA {
 impl Default for StartSubcommandB {
     fn default() -> Self {
         StartSubcommandB::From {
-            start: String::from(chrono::Local::now().format("%H%M").to_string()),
+            start: chrono::Local::now().format("%H%M").to_string(),
         }
     }
 }
