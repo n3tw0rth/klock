@@ -9,15 +9,11 @@ use crate::error::Result;
 pub trait Board {
     async fn new() -> Self;
     async fn init(self, args: Args) -> Result<()>;
-    async fn get_project_issues(&mut self, project_code: &String) -> Result<()>;
+    async fn get_project_issues(&mut self, project_code: &str) -> Result<()>;
     async fn process_arguments(&mut self, args: Args) -> Result<()>;
     async fn logout(&self) -> Result<()>;
     async fn pick_issue(&self, issues: Vec<JiraIssue>) -> Result<String>;
-    async fn fuzzy_search(
-        &mut self,
-        project_code: &String,
-        pattern: &String,
-    ) -> Result<Vec<JiraIssue>>;
+    async fn fuzzy_search(&mut self, project_code: &str, pattern: &str) -> Result<Vec<JiraIssue>>;
 }
 
 /// These structs defines the jira issues REST API reponse
