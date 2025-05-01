@@ -44,9 +44,7 @@ impl Tracker {
                 let _ = fs::File::create(&path).await;
                 println!("Created file at {}", path.display());
             }
-        } else {
-            Error::TrackerError("Cannot find the data directory in the host".to_string());
-        };
+        }
 
         let config = ConfigParser::parse()
             .await
@@ -123,16 +121,16 @@ impl Tracker {
         reader.read_line(&mut line).await?;
 
         let tokens: Vec<String> = line.trim().split(" ").map(|v| v.to_string()).collect();
-        let mut end_time = String::new();
 
+        let end_time = 
         // To stop the current task immediately, when at value is not passed
         if at.eq("-1") {
-            end_time = chrono::Local::now().format("%H%M").to_string();
+                chrono::Local::now().format("%H%M").to_string()
         }
         // Stop the task on the value at
         else {
-            end_time = at
-        }
+              at
+        };
 
         self.create_entry(
             tokens.first().unwrap(),
@@ -163,6 +161,6 @@ impl Tracker {
     /// Let the user to open up a log file to edit manually
     /// will open the file for the day if the date is not set
     pub async fn open_editor(&self) {
-        unimplemented!()
+        println!("Selected editor: {:?}", self.config.editor)
     }
 }
