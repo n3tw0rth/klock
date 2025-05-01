@@ -1,5 +1,7 @@
 # Jired
 
+[![Rust CI](https://github.com/n3tw0rth/jired/actions/workflows/github-actions.yml/badge.svg)](https://github.com/n3tw0rth/jired/actions/workflows/github-actions.yml)
+
 _Yeah, it is a weird name_
 
 A command-line tool for logging time across multiple time tracking platforms including Jira, Clockify, and more.
