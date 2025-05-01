@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use regex::Regex;
 use reqwest::{Client, ClientBuilder};
 use strum::{EnumIter, IntoEnumIterator};
-use tracing::{error, info};
+use tracing::info;
 
 use crate::boards::{JiraIssue, JiraIssues};
 use crate::common::{Secrets, helpers, tracker::Tracker};
@@ -31,13 +31,14 @@ impl std::fmt::Display for JiraSecrets {
 enum JiraSearchQuery {
     /// All Issues assigned to the user in a specific project
     IssuesOnProjectQuery,
-    BlankQuery,
+    //TODO: commented for now and will be used in the future
+    //BlankQuery,
 }
 
 /// Implements a query() method on each enum field to return a query string
 impl JiraSearchQuery {
     /// returns the query string for each enum field
-    pub fn query(&self, server: &str, account_id: &str, project: &String) -> String {
+    pub fn query(&self, server: &str, account_id: &str, project: &str) -> String {
         let search_url = format!("https://{}/rest/api/3/search?", server);
         let query_slice = match self {
             JiraSearchQuery::IssuesOnProjectQuery => {
@@ -47,7 +48,6 @@ impl JiraSearchQuery {
                     project.to_uppercase()
                 )
             }
-            JiraSearchQuery::BlankQuery => "".to_owned(),
         };
         format!("{search_url}{query_slice}")
     }
@@ -102,22 +102,21 @@ impl Board for Jira {
                 // in the list)
 
                 let search_result = self.fuzzy_search(&project_code, &pattern).await?;
-                let mut task_id = String::new();
 
-                if search_result.len() == 0 {
+                if search_result.is_empty() {
                     return Err(Error::CustomError(
                         "There are no tickets matching your search".to_string(),
                     ));
                 }
 
-                if search_result.len() != 1 {
-                    task_id = self.pick_issue(search_result).await?;
+                let task_id = if search_result.len() != 1 {
+                    self.pick_issue(search_result).await?
                 } else {
-                    task_id = match search_result.get(0) {
+                    match search_result.first() {
                         Some(x) => x.key.clone(),
                         None => String::new(),
                     }
-                }
+                };
 
                 let start_and_end_slice = match till.unwrap_or_default() {
                     StartSubcommandA::Till { till, from } => (till, from.unwrap_or_default()),
@@ -132,7 +131,7 @@ impl Board for Jira {
                     .create_entry(&project_code, &task_id, start_and_end_slice.0, end_time)
                     .await?
             }
-            Commands::Logout {} => {
+            Commands::Logout => {
                 self.logout().await?;
             }
             Commands::Stop { at } => {
@@ -158,10 +157,10 @@ impl Board for Jira {
                     // Print the appropriate command based on the OS
                     match os {
                         "linux" | "macos" => {
-                            println!("export {}={}", "JIRED_CURRENT_TIME", date);
+                            println!("export JIRED_CURRENT_TIME={}", date);
                         }
                         "windows" => {
-                            println!("set {}={}", "JIRED_CURRENT_TIME", date);
+                            println!("set JIRED_CURRENT_TIME={}", date);
                         }
                         _ => {
                             Error::CustomError(format!("Unsupported OS {os}"));
@@ -192,8 +191,8 @@ impl Board for Jira {
 
         let selection = issues
             .get(input - 1)
-            .and_then(|v| Some(&v.key))
-            .expect("please enter a valid value");
+            .map(|v| v.clone().key)
+            .unwrap_or_default();
 
         println!("you selected :{selection:?}");
 
@@ -232,11 +231,11 @@ impl Board for Jira {
     }
 
     /// Collects issues on demand
-    async fn get_project_issues(&mut self, project_code: &String) -> Result<()> {
+    async fn get_project_issues(&mut self, project_code: &str) -> Result<()> {
         let query = JiraSearchQuery::IssuesOnProjectQuery.query(
             &self.server,
             &self.account_id,
-            &project_code,
+            project_code,
         );
 
         let response = self
@@ -257,18 +256,14 @@ impl Board for Jira {
 
     async fn logout(&self) -> Result<()> {
         for secret in JiraSecrets::iter() {
-            Secrets::delete(&secret.to_string()).map_err(|e| e)?
+            Secrets::delete(&secret.to_string())?;
         }
         Ok(())
     }
 
     /// Search thru all the issues under the specific project and return all the issues match the
     /// pattern
-    async fn fuzzy_search(
-        &mut self,
-        project_code: &String,
-        pattern: &String,
-    ) -> Result<Vec<JiraIssue>> {
+    async fn fuzzy_search(&mut self, project_code: &str, pattern: &str) -> Result<Vec<JiraIssue>> {
         self.get_project_issues(project_code).await?;
         info!("searching for pattern {pattern:?}");
         let filtered_issues = self
