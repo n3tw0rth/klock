@@ -122,14 +122,13 @@ impl Tracker {
 
         let tokens: Vec<String> = line.trim().split(" ").map(|v| v.to_string()).collect();
 
-        let end_time = 
         // To stop the current task immediately, when at value is not passed
-        if at.eq("-1") {
-                chrono::Local::now().format("%H%M").to_string()
+        let end_time = if at.eq("-1") {
+            chrono::Local::now().format("%H%M").to_string()
         }
         // Stop the task on the value at
         else {
-              at
+            at
         };
 
         self.create_entry(
