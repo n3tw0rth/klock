@@ -1,7 +1,7 @@
 use dirs::config_dir;
 use serde::Deserialize;
-use tokio::fs::File;
-use tokio::io::AsyncReadExt;
+use tokio::fs::{self, File};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use toml;
 
 use crate::error::{Error::CustomError, Result};
@@ -15,6 +15,16 @@ impl ConfigParser {
         let mut config_file = config_dir().expect("Something wrong with config path");
         config_file.push(std::env!("CARGO_PKG_NAME"));
         config_file.push("config.toml");
+
+        if !fs::try_exists(config_file.clone()).await? {
+            let config_file_default_content = r#"clocks = ["jira","clockify"]
+editor = "nvim"
+            "#;
+            // Create the file and write content
+            let mut file = fs::File::create(&config_file).await?;
+            file.write_all(config_file_default_content.as_bytes())
+                .await?;
+        }
 
         let mut content = String::new();
         let mut file = File::open(&config_file).await?;
