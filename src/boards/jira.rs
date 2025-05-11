@@ -5,7 +5,7 @@ use strum::{EnumIter, IntoEnumIterator};
 use tracing::info;
 
 use crate::boards::{JiraIssue, JiraIssues};
-use crate::common::{Secrets, helpers, tracker::Tracker};
+use crate::common::{helpers, tracker::Tracker, Secrets};
 use crate::error::{Error, Result};
 use crate::{Args, Commands, StartSubcommandA, StartSubcommandB};
 
@@ -125,6 +125,9 @@ impl Board for Jira {
                 let end_time = match start_and_end_slice.clone().1 {
                     StartSubcommandB::From { start } => start,
                 };
+
+                // stop any ongoing task, assuming the user stopped the the last task at current time
+                self.tracker.stop_current("-1".to_string()).await?;
 
                 // Write the record into the file
                 self.tracker
