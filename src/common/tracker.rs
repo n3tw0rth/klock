@@ -200,7 +200,7 @@ mod tests {
         let mut f = fs::File::open(&file_path).await.unwrap();
         f.read_to_string(&mut contents).await.unwrap();
 
-        assert_eq!(contents.trim(), "PROJ Implement logging 1234 1130");
+        assert_eq!(contents.trim(), "proj PROJ-3 1234 1130");
     }
 
     #[tokio::test]
@@ -214,8 +214,8 @@ mod tests {
         // Create an ongoing task
         tracker
             .create_entry(
-                &"PROJ".to_string(),
-                &"Ongoing task".to_string(),
+                &"proj".to_string(),
+                &"proj-3".to_string(),
                 "-1".to_string(),
                 "0900".to_string(),
             )
@@ -227,7 +227,7 @@ mod tests {
         let mut contents = String::new();
         let mut f = fs::File::open(&current_path).await.unwrap();
         f.read_to_string(&mut contents).await.unwrap();
-        assert!(contents.contains("Ongoing task"));
+        assert!(contents.contains("proj-3"));
 
         // Force terminate
         tracker.force_terminate_tasks().await.unwrap();
@@ -236,6 +236,7 @@ mod tests {
         let mut contents_after = String::new();
         let mut f = fs::File::open(&current_path).await.unwrap();
         f.read_to_string(&mut contents_after).await.unwrap();
+        println!("{}", contents_after.trim());
         assert!(contents_after.trim().is_empty());
     }
 }
