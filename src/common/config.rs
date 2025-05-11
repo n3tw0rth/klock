@@ -47,12 +47,21 @@ editor = "nvim"
     }
 }
 
-#[derive(Default, Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 pub struct AppConfig {
-    clocks: Vec<String>,
+    pub clocks: Vec<String>,
     pub editor: Option<String>,
     // TODO: Temporarily commented out – planned for future use.
     // project: Option<ProjectCodes>,
+}
+
+impl Default for AppConfig {
+    fn default() -> Self {
+        AppConfig {
+            clocks: vec!["jira".to_string(), "clockify".to_string()],
+            editor: None,
+        }
+    }
 }
 
 #[derive(Default, Deserialize, Debug)]
