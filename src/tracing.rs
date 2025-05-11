@@ -3,7 +3,7 @@ use std::{
     fs::{self},
 };
 
-use tracing_subscriber::{Layer, filter, layer::SubscriberExt, util::SubscriberInitExt};
+use tracing_subscriber::{filter, layer::SubscriberExt, util::SubscriberInitExt, Layer};
 
 use crate::error::Error;
 

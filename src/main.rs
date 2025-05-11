@@ -1,11 +1,11 @@
 use clap::Parser;
 use jired::{
-    Args, Commands,
-    boards::{Board, jira::Jira},
-    clocks::{Clock, clockify::ClockifyClock},
+    boards::{jira::Jira, Board},
+    clocks::{clockify::ClockifyClock, Clock},
     common::config::ConfigParser,
     error::Result,
     tracing::Tracer,
+    Args, Commands,
 };
 
 #[tokio::main]
