@@ -4,7 +4,7 @@ use strum::EnumIter;
 use tracing::info;
 
 use super::Clock;
-use crate::common::{Secrets, helpers};
+use crate::common::{helpers, Secrets};
 use crate::error::{Error::ClockifyError, Result};
 
 const BASE_URL: &str = "https://api.clockify.me/api/v1";

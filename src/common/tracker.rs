@@ -21,46 +21,25 @@ impl Tracker {
     pub async fn new() -> Result<Self> {
         let mut filename: String = std::env::var("JIRED_CURRENT_TIME")
             .unwrap_or(chrono::Local::now().format("%Y-%m-%d").to_string());
-
         filename.push_str(".jj");
 
-        // Safely get data directory and build full path
-        let file_path = dirs::data_dir().map(|mut path| {
-            path.push(env!("CARGO_PKG_NAME")); // append the package name
-            path.push(filename.clone()); // append the file name
-            path
-        });
-
-        if let Some(path) = file_path.as_ref() {
-            if !fs::try_exists(&path).await.unwrap_or(false) {
-                // Ensure parent directories exist
-                if let Some(parent) = path.parent() {
-                    let _ = fs::create_dir_all(parent)
-                        .await
-                        .map_err(|e| Error::TrackerError(e.to_string()));
-                }
-
-                // Create the file (empty)
-                let _ = fs::File::create(&path).await;
-                println!("Created file at {}", path.display());
-            }
-        }
+        let file_path = dirs::data_dir()
+            .map(|mut path| {
+                path.push(env!("CARGO_PKG_NAME"));
+                path.push(filename.clone());
+                path
+            })
+            .ok_or_else(|| Error::CustomError("Failed to get data dir".into()))?;
 
         let config = ConfigParser::parse()
             .await
             .map_err(|e| Error::CustomError(e.to_string()))?
             .config;
 
-        Ok(Self {
-            file: file_path
-                .and_then(|p| p.to_str().map(|s| s.to_string()))
-                .expect("Failed to find the data directory"),
-            config,
-        })
+        Self::with_path_and_config(file_path, config).await
     }
 
     /// Creates a new entry on the log file
-    #[instrument]
     pub async fn create_entry(
         &self,
         project_code: &String,
@@ -69,6 +48,8 @@ impl Tracker {
         start: String,
     ) -> Result<()> {
         println!("logging time for {}", task);
+        info!("create new entry");
+
         let mut file = fs::OpenOptions::new()
             .append(true)
             .read(true)
@@ -122,6 +103,11 @@ impl Tracker {
 
         let tokens: Vec<String> = line.trim().split(" ").map(|v| v.to_string()).collect();
 
+        // skip if there are no current tasks
+        if tokens.len() != 4 {
+            return Ok(());
+        }
+
         // To stop the current task immediately, when at value is not passed
         let end_time = if at.eq("-1") {
             chrono::Local::now().format("%H%M").to_string()
@@ -161,5 +147,96 @@ impl Tracker {
     /// will open the file for the day if the date is not set
     pub async fn open_editor(&self) {
         println!("Selected editor: {:?}", self.config.editor)
+    }
+
+    pub async fn with_path_and_config(file_path: PathBuf, config: AppConfig) -> Result<Self> {
+        if !fs::try_exists(&file_path).await.unwrap_or(false) {
+            if let Some(parent) = file_path.parent() {
+                fs::create_dir_all(parent)
+                    .await
+                    .map_err(|e| Error::TrackerError(e.to_string()))?;
+            }
+
+            fs::File::create(&file_path).await?;
+        }
+
+        Ok(Self {
+            file: file_path.to_string_lossy().to_string(),
+            config,
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+    use tokio::fs;
+    use tokio::io::AsyncReadExt;
+
+    fn dummy_config() -> AppConfig {
+        AppConfig::default()
+    }
+
+    #[tokio::test]
+    async fn test_create_entry_writes_to_file() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("log.jj");
+        let tracker = Tracker::with_path_and_config(file_path.clone(), dummy_config())
+            .await
+            .unwrap();
+
+        tracker
+            .create_entry(
+                &"proj".to_string(),
+                &"PROJ-3".to_string(),
+                "1234".to_string(),
+                "1130".to_string(),
+            )
+            .await
+            .unwrap();
+
+        let mut contents = String::new();
+        let mut f = fs::File::open(&file_path).await.unwrap();
+        f.read_to_string(&mut contents).await.unwrap();
+
+        assert_eq!(contents.trim(), "proj PROJ-3 1234 1130");
+    }
+
+    #[tokio::test]
+    async fn test_force_terminate_tasks_creates_and_clears_current_file() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("log.jj");
+        let tracker = Tracker::with_path_and_config(file_path.clone(), dummy_config())
+            .await
+            .unwrap();
+
+        // Create an ongoing task
+        tracker
+            .create_entry(
+                &"proj".to_string(),
+                &"proj-3".to_string(),
+                "-1".to_string(),
+                "0900".to_string(),
+            )
+            .await
+            .unwrap();
+
+        // Make sure current.jj has the ongoing task
+        let current_path = tracker.get_current_file_path().await.unwrap();
+        let mut contents = String::new();
+        let mut f = fs::File::open(&current_path).await.unwrap();
+        f.read_to_string(&mut contents).await.unwrap();
+        assert!(contents.contains("proj-3"));
+
+        // Force terminate
+        tracker.force_terminate_tasks().await.unwrap();
+
+        // After termination, current.jj should be truncated
+        let mut contents_after = String::new();
+        let mut f = fs::File::open(&current_path).await.unwrap();
+        f.read_to_string(&mut contents_after).await.unwrap();
+        println!("{}", contents_after.trim());
+        assert!(contents_after.trim().is_empty());
     }
 }

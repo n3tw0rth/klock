@@ -2,8 +2,8 @@ use async_trait::async_trait;
 pub mod clickup;
 pub mod jira;
 
-use crate::Args;
 use crate::error::Result;
+use crate::Args;
 
 #[async_trait]
 pub trait Board {
