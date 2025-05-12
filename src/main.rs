@@ -19,7 +19,7 @@ async fn main() -> Result<()> {
             let clocks = config.get_clocks()?;
             for clock in clocks {
                 if clock.as_str() == "clockify" {
-                    ClockifyClock::new().await.init().await?;
+                    ClockifyClock::new().await.init(args.clone()).await?;
                 }
             }
         }
