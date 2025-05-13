@@ -44,6 +44,8 @@ pub enum Commands {
         /// Date (YYYY-MM-DD)
         date: String,
     },
+    /// Add a project
+    Add { project: String },
     /// Log time to the clocks
     Log,
     /// Edit the log file

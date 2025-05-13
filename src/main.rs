@@ -25,6 +25,7 @@ async fn main() -> Result<()> {
         }
         _ => {
             Jira::new().await.init(args.clone()).await?;
+            ClockifyClock::new().await.init(args.clone()).await?;
         }
     }
 

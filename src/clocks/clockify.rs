@@ -54,6 +54,9 @@ impl Clock for ClockifyClock {
     async fn process_arguments(&mut self, args: Args) -> Result<()> {
         match args.command {
             Commands::Log => self.log().await?,
+            Commands::Add { project } => {
+                self.add_new_project(project).await?;
+            }
             _ => {}
         }
         Ok(())
@@ -103,6 +106,53 @@ impl ClockifyClock {
 
         Ok(())
     }
+
+    /// This method is used to add a new project and save it in the config file
+    pub async fn add_new_project(&self, project: String) -> Result<()> {
+        let url = format!(
+            "{}/workspaces/{}/projects",
+            BASE_URL,
+            self.workspace_id.trim_matches('"')
+        );
+
+        let response = self
+            .client
+            .get(url)
+            .header("X-Api-Key", &self.api_token)
+            .query(&[("name", project)])
+            .send()
+            .await?
+            .text()
+            .await?;
+
+        let json = serde_json::from_str::<Vec<ClockifyProjectsResponse>>(&response)
+            .map_err(|_| ClockifyError("Error parsing projects response to json".to_string()))?;
+
+        // select the right project
+        json.iter().enumerate().for_each(|(index, item)| {
+            println!("{} {:?}", index + 1, item.name);
+        });
+
+        let selected_item;
+
+        // promt the user to select the correct code
+        if json.len() == 1 {
+            selected_item = json.first();
+        } else {
+            helpers::promt_user("Please select the correct project code")?;
+            let user_selection = helpers::read_stdin()?;
+            let index: usize = user_selection
+                .trim()
+                .parse()
+                .expect("Please enter a valid value");
+            selected_item = json.get(index - 1);
+        }
+
+        // TODO: write the user selection to config
+        println!("you selected {:?}", selected_item);
+
+        Ok(())
+    }
 }
 
 /// Defines the types of secrets used with Clockify
@@ -122,7 +172,13 @@ impl std::fmt::Display for ClockifySecrets {
 // TODO: Temporarily commented out – planned for future use.
 #[derive(Deserialize)]
 pub struct ClockifyTimeEntryPayload {
-    billable: bool,
     #[serde(rename = "workspaceId")]
     workspace_id: String,
+    billable: bool,
+}
+
+#[derive(Deserialize, Debug)]
+struct ClockifyProjectsResponse {
+    id: String,
+    name: String,
 }

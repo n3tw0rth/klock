@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use dirs::config_dir;
 use serde::Deserialize;
 use tokio::fs::{self, File};
@@ -38,8 +40,13 @@ editor = "nvim"
         Ok(Self { config })
     }
 
-    pub fn get_clocks(self) -> Result<Vec<String>> {
-        Ok(self.config.clocks)
+    pub fn get_clocks(&self) -> Result<Vec<String>> {
+        Ok(self.config.clocks.clone())
+    }
+
+    pub fn get_projects(&self) -> Result<()> {
+        println!("{:?}", self.config.projects);
+        Ok(())
     }
 
     pub fn get_editor(self) -> Result<String> {
@@ -51,8 +58,7 @@ editor = "nvim"
 pub struct AppConfig {
     pub clocks: Vec<String>,
     pub editor: Option<String>,
-    // TODO: Temporarily commented out – planned for future use.
-    // project: Option<ProjectCodes>,
+    pub projects: Vec<Project>,
 }
 
 impl Default for AppConfig {
@@ -60,12 +66,13 @@ impl Default for AppConfig {
         AppConfig {
             clocks: vec!["jira".to_string(), "clockify".to_string()],
             editor: None,
+            projects: vec![Project::default()],
         }
     }
 }
 
 #[derive(Default, Deserialize, Debug)]
-struct ProjectCodes {
-    // TODO: Temporarily commented out – planned for future use.
-    // codes: HashMap<String, String>,
+struct Project {
+    code: String,
+    id: Option<String>,
 }
