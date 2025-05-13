@@ -1,15 +1,15 @@
-use std::collections::HashMap;
-
 use dirs::config_dir;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tokio::fs::{self, File};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use toml;
 
+use crate::error::Error;
 use crate::error::{Error::CustomError, Result};
 
 pub struct ConfigParser {
     pub config: AppConfig,
+    pub config_file: String,
 }
 
 impl ConfigParser {
@@ -37,7 +37,25 @@ editor = "nvim"
 
         let config: AppConfig = toml::from_str(&content).map_err(|e| CustomError(e.to_string()))?;
 
-        Ok(Self { config })
+        Ok(Self {
+            config,
+            config_file: config_file.to_string_lossy().to_string(),
+        })
+    }
+
+    pub fn set_project(&mut self, key: String, code: String, id: String) -> Result<&mut Self> {
+        let project = Project { id, code, key };
+        self.config.projects.push(project);
+
+        Ok(self)
+    }
+
+    pub async fn update_config(&self) -> Result<()> {
+        let config_string =
+            toml::to_string_pretty(&self.config).map_err(|e| Error::CustomError(e.to_string()))?;
+
+        fs::write(self.config_file.clone(), config_string).await?;
+        Ok(())
     }
 
     pub fn get_clocks(&self) -> Result<Vec<String>> {
@@ -54,7 +72,7 @@ editor = "nvim"
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Serialize, Clone)]
 pub struct AppConfig {
     pub clocks: Vec<String>,
     pub editor: Option<String>,
@@ -71,8 +89,9 @@ impl Default for AppConfig {
     }
 }
 
-#[derive(Default, Deserialize, Debug)]
-struct Project {
+#[derive(Default, Deserialize, Debug, Serialize, Clone)]
+pub struct Project {
     code: String,
-    id: Option<String>,
+    key: String,
+    id: String,
 }

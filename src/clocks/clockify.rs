@@ -5,7 +5,9 @@ use strum::EnumIter;
 use tracing::info;
 
 use super::Clock;
+use crate::common::config::ConfigParser;
 use crate::common::{helpers, Secrets};
+use crate::error::Error;
 use crate::error::{Error::ClockifyError, Result};
 use crate::{Args, Commands};
 
@@ -65,6 +67,8 @@ impl Clock for ClockifyClock {
     async fn log(&self) -> Result<()> {
         println!("logging started");
         println!("workspaceId: {}", self.workspace_id);
+
+        //WIP: logging time from tracker
         Ok(())
     }
 }
@@ -119,7 +123,7 @@ impl ClockifyClock {
             .client
             .get(url)
             .header("X-Api-Key", &self.api_token)
-            .query(&[("name", project)])
+            .query(&[("name", &project)])
             .send()
             .await?
             .text()
@@ -133,11 +137,11 @@ impl ClockifyClock {
             println!("{} {:?}", index + 1, item.name);
         });
 
-        let selected_item;
-
         // promt the user to select the correct code
-        if json.len() == 1 {
-            selected_item = json.first();
+        let selected_item = if json.len() == 1 {
+            json.first()
+                .ok_or("Project response is empty, check the project code again and try")
+                .map_err(|e| Error::CustomError(e.to_string()))?
         } else {
             helpers::promt_user("Please select the correct project code")?;
             let user_selection = helpers::read_stdin()?;
@@ -145,11 +149,20 @@ impl ClockifyClock {
                 .trim()
                 .parse()
                 .expect("Please enter a valid value");
-            selected_item = json.get(index - 1);
-        }
+            json.get(index - 1)
+                .ok_or("Project response is empty, check the project code again and try")
+                .map_err(|e| Error::CustomError(e.to_string()))?
+        };
 
-        // TODO: write the user selection to config
-        println!("you selected {:?}", selected_item);
+        ConfigParser::parse()
+            .await?
+            .set_project(
+                project,
+                selected_item.name.clone(),
+                selected_item.id.clone(),
+            )?
+            .update_config()
+            .await?;
 
         Ok(())
     }
@@ -169,7 +182,6 @@ impl std::fmt::Display for ClockifySecrets {
     }
 }
 
-// TODO: Temporarily commented out – planned for future use.
 #[derive(Deserialize)]
 pub struct ClockifyTimeEntryPayload {
     #[serde(rename = "workspaceId")]
