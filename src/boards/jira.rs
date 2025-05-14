@@ -31,8 +31,6 @@ impl std::fmt::Display for JiraSecrets {
 enum JiraSearchQuery {
     /// All Issues assigned to the user in a specific project
     IssuesOnProjectQuery,
-    //TODO: commented for now and will be used in the future
-    //BlankQuery,
 }
 
 /// Implements a query() method on each enum field to return a query string
