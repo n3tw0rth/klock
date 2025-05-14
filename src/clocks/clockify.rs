@@ -98,14 +98,11 @@ impl Clock for ClockifyClock {
                 billable: true,
                 workspace_id: self.workspace_id.trim_matches('"').to_string(),
                 description,
-                project_id: project.id.clone(),
+                project_id: project.id.to_string(),
                 end: formatted_end_string,
                 start: formatted_start_string,
             };
 
-            println!("debug: {project:?}");
-
-            // WIP:
             // create a time entry on clockify
             let mut url = BASE_URL.to_string();
             url.push_str("/workspaces");
