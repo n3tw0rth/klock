@@ -12,7 +12,7 @@ pub trait Board {
     async fn get_project_issues(&mut self, project_code: &str) -> Result<()>;
     async fn process_arguments(&mut self, args: Args) -> Result<()>;
     async fn logout(&self) -> Result<()>;
-    async fn pick_issue(&self, issues: Vec<JiraIssue>) -> Result<String>;
+    async fn pick_issue(&self, issues: Vec<JiraIssue>) -> Result<(String, String)>;
     async fn fuzzy_search(&mut self, project_code: &str, pattern: &str) -> Result<Vec<JiraIssue>>;
 }
 
@@ -25,7 +25,7 @@ struct JiraIssues {
     issues: Vec<JiraIssue>,
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Default, Clone)]
 pub struct JiraIssue {
     //
     //#[serde(rename = "self")]
@@ -34,7 +34,7 @@ pub struct JiraIssue {
     pub fields: JiraIssueFields,
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Default, Clone)]
 pub struct JiraIssueFields {
     summary: String,
     #[serde(rename = "statusCategory")]

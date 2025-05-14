@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+use chrono::{DateTime, NaiveDate, NaiveTime, Utc};
+use shell_words;
 use tokio::fs;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tracing::{info, instrument};
@@ -46,9 +48,17 @@ impl Tracker {
         task: &String,
         end: String,
         start: String,
+        title: String,
     ) -> Result<()> {
         println!("logging time for {}", task);
         info!("create new entry");
+
+        // validate if the end time is after and start
+        if start > end {
+            return Err(Error::CustomError(
+                "End time must be later than start time.".to_string(),
+            ));
+        }
 
         let mut file = fs::OpenOptions::new()
             .append(true)
@@ -67,7 +77,10 @@ impl Tracker {
                 .await?;
         }
 
-        let new_entry = format!("{} {} {} {}\n", project_code, task, end, start);
+        let new_entry = format!(
+            "{} {} {} {} \"{}\"\n",
+            project_code, task, end, start, title
+        );
 
         file.write_all(new_entry.as_bytes()).await?;
         file.flush().await?;
@@ -101,13 +114,15 @@ impl Tracker {
         let mut line = String::new();
         reader.read_line(&mut line).await?;
 
-        let tokens: Vec<String> = line.trim().split(" ").map(|v| v.to_string()).collect();
+        let tokens: Vec<String> =
+            shell_words::split(&line).map_err(|e| Error::CustomError(e.to_string()))?;
 
         // skip if there are no current tasks
-        if tokens.len() != 4 {
+        if tokens.len() != 5 {
             return Ok(());
         }
 
+        println!("debug: does code reach here 117");
         // To stop the current task immediately, when at value is not passed
         let end_time = if at.eq("-1") {
             chrono::Local::now().format("%H%M").to_string()
@@ -122,6 +137,7 @@ impl Tracker {
             tokens.get(1).unwrap(),
             end_time,
             tokens.get(3).unwrap().to_string(),
+            tokens.get(4).unwrap().to_string(),
         )
         .await?;
 
@@ -136,12 +152,27 @@ impl Tracker {
         Ok(())
     }
 
-    /// This method is used to forcefully stop a ongoing tasks assuming users will not work on
-    /// multiple projects at once
-    pub async fn force_terminate_tasks(&self) -> Result<()> {
-        self.stop_current(String::from("-1")).await?;
-        Ok(())
+    /// Read the day's log file to by the clocks to log the time on respective platform
+    pub async fn read(&self) -> Result<Vec<String>> {
+        let file = fs::File::open(&self.file).await?;
+        let reader = BufReader::new(file);
+
+        let mut lines = vec![];
+        let mut line_stream = tokio::io::BufReader::new(reader).lines();
+
+        while let Some(line) = line_stream.next_line().await? {
+            lines.push(line);
+        }
+
+        Ok(lines)
     }
+
+    ///// This method is used to forcefully stop a ongoing tasks assuming users will not work on
+    ///// multiple projects at once
+    //pub async fn force_terminate_tasks(&self) -> Result<()> {
+    //    self.stop_current(String::from("-1")).await?;
+    //    Ok(())
+    //}
 
     /// Let the user to open up a log file to edit manually
     /// will open the file for the day if the date is not set
@@ -164,6 +195,32 @@ impl Tracker {
             file: file_path.to_string_lossy().to_string(),
             config,
         })
+    }
+
+    /// Convert string in 24hrs system to yyyy-MM-ddThh:mm:ssZ
+    pub fn format_24_hrs(&self, time_str: &str) -> Result<String> {
+        let date = NaiveDate::parse_from_str(
+            &std::env::var("JIRED_CURRENT_TIME")
+                .unwrap_or(chrono::Local::now().format("%Y-%m-%d").to_string()),
+            "%Y-%m-%d",
+        )
+        .map_err(|_| Error::CustomError("Error passing time".to_string()))?;
+        let hour: u32 = time_str[0..2]
+            .parse()
+            .map_err(|_| Error::CustomError("Error passing time".to_string()))?;
+        let minute: u32 = time_str[2..4]
+            .parse()
+            .map_err(|_| Error::CustomError("Error passing time".to_string()))?;
+        let time = NaiveTime::from_hms_opt(hour, minute, 0)
+            .ok_or("invalid time components")
+            .map_err(|e| Error::CustomError(e.to_string()))?;
+
+        let naive_datetime = date.and_time(time);
+
+        #[allow(deprecated)]
+        let datetime_utc: DateTime<Utc> = DateTime::<Utc>::from_utc(naive_datetime, Utc);
+
+        Ok(datetime_utc.to_rfc3339())
     }
 }
 
@@ -192,6 +249,7 @@ mod tests {
                 &"PROJ-3".to_string(),
                 "1234".to_string(),
                 "1130".to_string(),
+                "Task title".to_string(),
             )
             .await
             .unwrap();
@@ -200,43 +258,6 @@ mod tests {
         let mut f = fs::File::open(&file_path).await.unwrap();
         f.read_to_string(&mut contents).await.unwrap();
 
-        assert_eq!(contents.trim(), "proj PROJ-3 1234 1130");
-    }
-
-    #[tokio::test]
-    async fn test_force_terminate_tasks_creates_and_clears_current_file() {
-        let dir = tempdir().unwrap();
-        let file_path = dir.path().join("log.jj");
-        let tracker = Tracker::with_path_and_config(file_path.clone(), dummy_config())
-            .await
-            .unwrap();
-
-        // Create an ongoing task
-        tracker
-            .create_entry(
-                &"proj".to_string(),
-                &"proj-3".to_string(),
-                "-1".to_string(),
-                "0900".to_string(),
-            )
-            .await
-            .unwrap();
-
-        // Make sure current.jj has the ongoing task
-        let current_path = tracker.get_current_file_path().await.unwrap();
-        let mut contents = String::new();
-        let mut f = fs::File::open(&current_path).await.unwrap();
-        f.read_to_string(&mut contents).await.unwrap();
-        assert!(contents.contains("proj-3"));
-
-        // Force terminate
-        tracker.force_terminate_tasks().await.unwrap();
-
-        // After termination, current.jj should be truncated
-        let mut contents_after = String::new();
-        let mut f = fs::File::open(&current_path).await.unwrap();
-        f.read_to_string(&mut contents_after).await.unwrap();
-        println!("{}", contents_after.trim());
-        assert!(contents_after.trim().is_empty());
+        assert_eq!(contents.trim(), "proj PROJ-3 1234 1130 \"Task title\"");
     }
 }
