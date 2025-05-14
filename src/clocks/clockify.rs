@@ -1,11 +1,12 @@
 use async_trait::async_trait;
 use reqwest::{Client, ClientBuilder};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use strum::EnumIter;
 use tracing::info;
 
 use super::Clock;
 use crate::common::config::ConfigParser;
+use crate::common::tracker::Tracker;
 use crate::common::{helpers, Secrets};
 use crate::error::Error;
 use crate::error::{Error::ClockifyError, Result};
@@ -68,7 +69,66 @@ impl Clock for ClockifyClock {
         println!("logging started");
         println!("workspaceId: {}", self.workspace_id);
 
-        //WIP: logging time from tracker
+        let tracker = Tracker::new().await?;
+        let projects = ConfigParser::parse().await?.get_projects()?;
+        let lines = tracker.read().await?;
+
+        for line in lines.iter() {
+            let parts = shell_words::split(line).map_err(|e| Error::CustomError(e.to_string()))?;
+
+            let [key, ticket_id, end, start, title]: [String; 5] = match parts.try_into() {
+                Ok(array) => array,
+                Err(_) => panic!("Expected exactly 5 fields"),
+            };
+
+            let formatted_end_string = tracker.format_24_hrs(&end)?;
+            let formatted_start_string = tracker.format_24_hrs(&start)?;
+
+            let description = format!("[{}]: {}", ticket_id, title);
+
+            let project = match projects.iter().find(|p| p.key == key) {
+                Some(p) => Ok(p),
+                None => Err(Error::CustomError(format!(
+                    "Project with key '{}' not found",
+                    key
+                ))),
+            }?;
+
+            let payload = ClockifyTimeEntryPayload {
+                billable: true,
+                workspace_id: self.workspace_id.trim_matches('"').to_string(),
+                description,
+                project_id: project.id.clone(),
+                end: formatted_end_string,
+                start: formatted_start_string,
+            };
+
+            println!("debug: {project:?}");
+
+            // WIP:
+            // create a time entry on clockify
+            let mut url = BASE_URL.to_string();
+            url.push_str("/workspaces");
+
+            let url = format!(
+                "{}/workspaces/{}/time-entries",
+                BASE_URL,
+                self.workspace_id.trim_matches('"')
+            );
+
+            let response = self
+                .client
+                .post(&url)
+                .header("X-Api-Key", &self.api_token)
+                .json(&payload)
+                .send()
+                .await?
+                .text()
+                .await?;
+
+            println!("{:?}", response);
+        }
+
         Ok(())
     }
 }
@@ -182,11 +242,17 @@ impl std::fmt::Display for ClockifySecrets {
     }
 }
 
-#[derive(Deserialize)]
+/// https://docs.developer.clockify.me/#tag/Time-entry/operation/createTimeEntry
+#[derive(Deserialize, Serialize, Debug)]
 pub struct ClockifyTimeEntryPayload {
     #[serde(rename = "workspaceId")]
     workspace_id: String,
     billable: bool,
+    #[serde(rename = "projectId")]
+    project_id: String,
+    start: String,
+    end: String,
+    description: String,
 }
 
 #[derive(Deserialize, Debug)]

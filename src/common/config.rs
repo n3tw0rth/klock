@@ -62,9 +62,8 @@ editor = "nvim"
         Ok(self.config.clocks.clone())
     }
 
-    pub fn get_projects(&self) -> Result<()> {
-        println!("{:?}", self.config.projects);
-        Ok(())
+    pub fn get_projects(&self) -> Result<Vec<Project>> {
+        Ok(self.config.projects.clone())
     }
 
     pub fn get_editor(self) -> Result<String> {
@@ -91,7 +90,7 @@ impl Default for AppConfig {
 
 #[derive(Default, Deserialize, Debug, Serialize, Clone)]
 pub struct Project {
-    code: String,
-    key: String,
-    id: String,
+    pub code: String,
+    pub key: String,
+    pub id: String,
 }
