@@ -109,12 +109,12 @@ impl Board for Jira {
                     ));
                 }
 
-                let task_id = if search_result.len() != 1 {
+                let (task_id, task_summary) = if search_result.len() != 1 {
                     self.pick_issue(search_result).await?
                 } else {
                     match search_result.first() {
-                        Some(x) => x.key.clone(),
-                        None => String::new(),
+                        Some(x) => (x.key.clone(), x.fields.summary.clone()),
+                        None => (String::new(), String::new()),
                     }
                 };
 
@@ -131,7 +131,13 @@ impl Board for Jira {
 
                 // Write the record into the file
                 self.tracker
-                    .create_entry(&project_code, &task_id, start_and_end_slice.0, end_time)
+                    .create_entry(
+                        &project_code,
+                        &task_id,
+                        start_and_end_slice.0,
+                        end_time,
+                        task_summary,
+                    )
                     .await?
             }
             Commands::Logout => {
@@ -180,7 +186,7 @@ impl Board for Jira {
 
     /// When there are multiple matches from a fuzzy search, this method will let the user select
     /// the right issue
-    async fn pick_issue(&self, issues: Vec<JiraIssue>) -> Result<String> {
+    async fn pick_issue(&self, issues: Vec<JiraIssue>) -> Result<(String, String)> {
         println!("Please select an issue from the list below:\n");
         issues.iter().enumerate().for_each(|(index, issue)| {
             println!("{}. {} {}", index + 1, issue.key, issue.fields.summary);
@@ -194,7 +200,7 @@ impl Board for Jira {
 
         let selection = issues
             .get(input - 1)
-            .map(|v| v.clone().key)
+            .map(|v| (v.key.clone(), v.fields.summary.clone()))
             .unwrap_or_default();
 
         println!("you selected :{selection:?}");
