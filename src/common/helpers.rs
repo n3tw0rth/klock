@@ -39,6 +39,7 @@ pub fn read_stdin() -> Result<String> {
 /// Used when requests inputs from user
 /// print!() strings without line breaks will not flush, this method will force the flush()
 pub fn promt_user(prompt: &str) -> Result<()> {
+    // show the message to user
     println!("{prompt}");
     std::io::stdout().flush()?;
 

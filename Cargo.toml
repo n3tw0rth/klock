@@ -12,14 +12,17 @@ dirs = "6.0.0"
 keyring = { version = "3.6.2", features = ["linux-native-sync-persistent","linux-native","sync-secret-service"] }
 mockall = "0.13.1"
 regex = "1.11.1"
-reqwest = "0.12.15"
+reqwest = {version="0.12.15",features=["json"]}
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
+shell-words = "1.1.0"
 strum = { version = "0.27.1", features = ["derive"] }
 tempfile = "3.19.1"
 thiserror = "2.0.12"
 tokio = { version = "1.44.2", features = ["full"] }
+tokio-stream = "0.1.17"
 tokio-test = "0.4.4"
+tokio-util = "0.7.15"
 toml = "0.8.21"
 tracing = "0.1.41"
 tracing-subscriber = "0.3.19"
