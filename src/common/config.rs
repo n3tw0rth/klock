@@ -19,8 +19,15 @@ impl ConfigParser {
         config_file.push("config.toml");
 
         if !fs::try_exists(config_file.clone()).await? {
-            let config_file_default_content = r#"clocks = ["jira","clockify"]
+            let config_file_default_content = r#" clocks = [
+    "clockify",
+]
 editor = "nvim"
+
+[[clockify_projects]]
+code = ""
+key = ""
+id = ""
             "#;
             // Create the file and write content
             let mut file = fs::File::create(&config_file).await?;
@@ -45,7 +52,7 @@ editor = "nvim"
 
     pub fn set_project(&mut self, key: String, code: String, id: String) -> Result<&mut Self> {
         let project = Project { id, code, key };
-        self.config.projects.push(project);
+        self.config.clockify_projects.push(project);
 
         Ok(self)
     }
@@ -63,7 +70,7 @@ editor = "nvim"
     }
 
     pub fn get_projects(&self) -> Result<Vec<Project>> {
-        Ok(self.config.projects.clone())
+        Ok(self.config.clockify_projects.clone())
     }
 
     pub fn get_editor(self) -> Result<String> {
@@ -75,7 +82,7 @@ editor = "nvim"
 pub struct AppConfig {
     pub clocks: Vec<String>,
     pub editor: Option<String>,
-    pub projects: Vec<Project>,
+    pub clockify_projects: Vec<Project>,
 }
 
 impl Default for AppConfig {
@@ -83,7 +90,7 @@ impl Default for AppConfig {
         AppConfig {
             clocks: vec!["jira".to_string(), "clockify".to_string()],
             editor: None,
-            projects: vec![Project::default()],
+            clockify_projects: vec![Project::default()],
         }
     }
 }
