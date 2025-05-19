@@ -1,6 +1,8 @@
 # Jired
 
-[![CI](https://github.com/n3tw0rth/jired/actions/workflows/github-actions.yml/badge.svg)](https://github.com/n3tw0rth/jired/actions/workflows/github-actions.yml)
+[![Rust CI](https://github.com/n3tw0rth/jired/actions/workflows/ci.yml/badge.svg)](https://github.com/n3tw0rth/jired/actions/workflows/ci.yml)
+
+⚠️ **Warning**: This project is still under active development. Features may change or break at any time. Build for the convenience of working with jira and clockify, more features will come in future.
 
 **Status: 🚧 Currently in active development**
 
