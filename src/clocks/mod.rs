@@ -13,4 +13,5 @@ pub trait Clock {
     async fn init(&mut self, args: Args) -> Result<()>;
     async fn process_arguments(&mut self, args: Args) -> Result<()>;
     async fn log(&self) -> Result<()>;
+    async fn logout(&self) -> Result<()>;
 }

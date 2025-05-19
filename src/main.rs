@@ -5,7 +5,7 @@ use jired::{
     common::config::ConfigParser,
     error::Result,
     tracing::Tracer,
-    Args, Commands,
+    Args,
 };
 
 #[tokio::main]
@@ -14,22 +14,14 @@ async fn main() -> Result<()> {
     let config = ConfigParser::parse().await?;
     let args = Args::parse();
 
-    match args.command {
-        Commands::Log => {
-            let clocks = config.get_clocks()?;
-            for clock in clocks {
-                if clock.as_str() == "clockify" {
-                    ClockifyClock::new().await.init(args.clone()).await?;
-                }
-            }
-        }
-        Commands::Add { project: _ } => {
+    let clocks = config.get_clocks()?;
+    for clock in clocks {
+        if clock.as_str() == "clockify" {
             ClockifyClock::new().await.init(args.clone()).await?;
         }
-        _ => {
-            Jira::new().await.init(args.clone()).await?;
-        }
     }
+
+    Jira::new().await.init(args.clone()).await?;
 
     Ok(())
 }
