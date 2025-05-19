@@ -96,7 +96,7 @@ $: jired help
 
 ## Configuration
 
-Create a configuration file at `~/.config/ttrack/config.toml`:
+Create a configuration file at `~/.config/jired/config.toml`:
 
  |Platform |  Example                                                    |
  | ------- |  ----------------------------------------                   |
