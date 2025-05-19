@@ -2,6 +2,8 @@
 name = "jired"
 version = "1.0.0"
 edition = "2021"
+license = "MIT"
+keywords = ["cli", "time-logging","jira","clockify"]
 
 [dependencies]
 async-trait = "0.1.88"
