@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use reqwest::{Client, ClientBuilder};
 use serde::{Deserialize, Serialize};
-use strum::EnumIter;
+use strum::{EnumIter, IntoEnumIterator};
 use tracing::info;
 
 use super::Clock;
@@ -37,19 +37,22 @@ impl Clock for ClockifyClock {
 
     async fn init(&mut self, args: Args) -> Result<()> {
         let api_token = Secrets::get(&ClockifySecrets::ApiToken.to_string()).unwrap_or_default();
+        let workspace_id =
+            Secrets::get(&ClockifySecrets::WorkspaceId.to_string()).unwrap_or_default();
 
         if !api_token.is_empty() {
             self.authenticated = true;
             self.api_token = api_token;
+            self.workspace_id = workspace_id;
         } else {
             helpers::promt_user("enter the atlassian servername")?;
             self.api_token = helpers::read_stdin()?;
-
             Secrets::set(&ClockifySecrets::ApiToken.to_string(), &self.api_token)?;
+
+            // get the workspace
+            self.set_workspace_id().await?;
         }
 
-        // get the workspace
-        self.set_workspace_id().await?;
         self.process_arguments(args).await?;
         Ok(())
     }
@@ -60,7 +63,17 @@ impl Clock for ClockifyClock {
             Commands::Add { project } => {
                 self.add_new_project(project).await?;
             }
+            Commands::Logout => {
+                self.logout().await?;
+            }
             _ => {}
+        }
+        Ok(())
+    }
+
+    async fn logout(&self) -> Result<()> {
+        for secret in ClockifySecrets::iter() {
+            Secrets::delete(&secret.to_string())?;
         }
         Ok(())
     }
@@ -133,8 +146,6 @@ impl Clock for ClockifyClock {
 impl ClockifyClock {
     /// This will collect and store the clockify workspace id in the keyring
     pub async fn set_workspace_id(&mut self) -> Result<()> {
-        // FIXME: if the values is already saved in the keyring do not need to make the request
-        // again just update the app state
         info!("requesting the workspace id");
         let mut url = BASE_URL.to_string();
         url.push_str("/workspaces");
