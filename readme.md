@@ -28,6 +28,12 @@ CLI consists of Boards and Clocks
   - _and more_
 - Fast, case-sensitive substring search for filtering entries- 
 
+## What's next
+
+- Move command to move tasks from one state to another (eg: Todo -> In progress)
+- jira worklog (clock)
+- clickup (board)
+
 ## Installation
 For now linux users can install the CLI using the install script or may simply build the the project with `--release` flag and copy it to a preffered directory. I am currently working on supporting selected package managers on each OS.
 
