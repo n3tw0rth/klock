@@ -27,6 +27,7 @@ impl ConfigParser {
             let config_file_default_content = r#" clocks = [
     "clockify",
 ]
+time_zone = 5.5
 editor = "nvim"
 [[clockify_projects]]
 code = ""
@@ -83,6 +84,7 @@ pub struct AppConfig {
     pub clocks: Vec<String>,
     pub editor: Option<String>,
     pub clockify_projects: Vec<Project>,
+    pub time_zone: Option<f32>,
 }
 
 impl Default for AppConfig {
@@ -91,6 +93,7 @@ impl Default for AppConfig {
             clocks: vec!["jira".to_string(), "clockify".to_string()],
             editor: None,
             clockify_projects: vec![Project::default()],
+            time_zone: Some(0.0),
         }
     }
 }

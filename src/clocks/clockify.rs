@@ -122,6 +122,8 @@ impl Clock for ClockifyClock {
                 start: formatted_start_string,
             };
 
+            println!("{:?}", payload);
+
             // create a time entry on clockify
             let mut url = BASE_URL.to_string();
             url.push_str("/workspaces");
