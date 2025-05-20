@@ -37,17 +37,24 @@ enum JiraSearchQuery {
 impl JiraSearchQuery {
     /// returns the query string for each enum field
     pub fn query(&self, server: &str, account_id: &str, project: &str) -> String {
-        let search_url = format!("https://{}/rest/api/3/search?", server);
-        let query_slice = match self {
+        let base_url = format!("https://{}/rest/api/3/search", server);
+
+        let jql_raw = match self {
             JiraSearchQuery::IssuesOnProjectQuery => {
                 format!(
-                    "jql=assignee%3D{}%20and%20project%3D{}%20&fields=key,summary,statusCategory&maxResults=",
+                    "assignee={} and project={}",
                     account_id,
                     project.to_uppercase()
                 )
             }
         };
-        format!("{search_url}{query_slice}")
+
+        let jql_encoded = urlencoding::encode(&jql_raw);
+
+        format!(
+            "{base_url}?jql={}&fields=key,summary,statusCategory&maxResults=50",
+            jql_encoded
+        )
     }
 }
 
@@ -209,8 +216,10 @@ impl Board for Jira {
     /// check if the user is authenticated by checking if username and the apikeys is_empty()
     /// is unauthenticated the user will prompt to authenticate
     async fn init(mut self, args: Args) -> Result<()> {
-        let jira_api_token = Secrets::get(&JiraSecrets::JiraApiToken.to_string())?;
-        let username = Secrets::get(&JiraSecrets::Username.to_string())?;
+        info!("jira init");
+        let jira_api_token =
+            Secrets::get(&JiraSecrets::JiraApiToken.to_string()).unwrap_or_default();
+        let username = Secrets::get(&JiraSecrets::Username.to_string()).unwrap_or_default();
 
         if !jira_api_token.is_empty() && !username.is_empty() {
             self.authenticated = true;
@@ -219,11 +228,16 @@ impl Board for Jira {
             self.server = Secrets::get(&JiraSecrets::Server.to_string())?;
             self.jira_api_token = Secrets::get(&JiraSecrets::JiraApiToken.to_string())?;
         } else {
-            helpers::promt_user("enter the atlassian servername")?;
+            println!();
+            println!("==================================================");
+            println!("You are NOT authenticated with Jira.");
+            println!("Please provide the following credentials to proceed");
+            println!("==================================================");
+            helpers::promt_user("Enter the atlassian servername (xxx.atlassian.net)")?;
             self.server = helpers::read_stdin()?;
-            helpers::promt_user("enter user name below: ")?;
+            helpers::promt_user("Enter user name below: ")?;
             self.username = helpers::read_stdin()?;
-            helpers::promt_user("enter jira api key below: ")?;
+            helpers::promt_user("Enter jira api key below: ")?;
             self.jira_api_token = helpers::read_stdin()?;
 
             Secrets::set(&JiraSecrets::Username.to_string(), &self.username)?;
@@ -231,7 +245,8 @@ impl Board for Jira {
             Secrets::set(&JiraSecrets::Server.to_string(), &self.server)?;
         }
 
-        self.find_account_id().await?;
+        // TODO: prevent finding the account when user trying to logout
+        // self.find_account_id().await?;
         self.process_arguments(args).await?;
 
         Ok(())
@@ -239,6 +254,9 @@ impl Board for Jira {
 
     /// Collects issues on demand
     async fn get_project_issues(&mut self, project_code: &str) -> Result<()> {
+        info!("getting issues from projects");
+        self.find_account_id().await?;
+
         let query = JiraSearchQuery::IssuesOnProjectQuery.query(
             &self.server,
             &self.account_id,
@@ -262,6 +280,7 @@ impl Board for Jira {
     }
 
     async fn logout(&self) -> Result<()> {
+        info!("logging out, removing jira credentials");
         for secret in JiraSecrets::iter() {
             Secrets::delete(&secret.to_string())?;
         }
@@ -296,11 +315,16 @@ impl Board for Jira {
 impl Jira {
     async fn find_account_id(&mut self) -> Result<()> {
         info!("finding user jira account id");
+        if !self.account_id.is_empty() {
+            info!("skipping finding user jira account id, already existing");
+            return Ok(());
+        }
+
         let myself_url = format!("https://{}/rest/api/3/myself", self.server);
 
         let response = self
             .client
-            .get(myself_url)
+            .get(myself_url.clone())
             .basic_auth(&self.username, Some(&self.jira_api_token))
             .send()
             .await?;
