@@ -198,28 +198,42 @@ impl Tracker {
 
     /// Convert string in 24hrs system to yyyy-MM-ddThh:mm:ssZ
     pub fn format_24_hrs(&self, time_str: &str) -> Result<String> {
+        let timezone_hours: f32 = self.config.time_zone.unwrap_or(0.0);
         let date = NaiveDate::parse_from_str(
             &std::env::var("JIRED_CURRENT_TIME")
                 .unwrap_or(chrono::Local::now().format("%Y-%m-%d").to_string()),
             "%Y-%m-%d",
         )
-        .map_err(|_| Error::CustomError("Error passing time".to_string()))?;
+        .map_err(|_| Error::CustomError("Error parsing time".to_string()))?;
+
         let hour: u32 = time_str[0..2]
             .parse()
-            .map_err(|_| Error::CustomError("Error passing time".to_string()))?;
+            .map_err(|_| Error::CustomError("Error parsing time".to_string()))?;
         let minute: u32 = time_str[2..4]
             .parse()
-            .map_err(|_| Error::CustomError("Error passing time".to_string()))?;
+            .map_err(|_| Error::CustomError("Error parsing time".to_string()))?;
+
         let time = NaiveTime::from_hms_opt(hour, minute, 0)
             .ok_or("invalid time components")
             .map_err(|e| Error::CustomError(e.to_string()))?;
 
         let naive_datetime = date.and_time(time);
 
-        #[allow(deprecated)]
-        let datetime_utc: DateTime<Utc> = DateTime::<Utc>::from_utc(naive_datetime, Utc);
+        let hours = timezone_hours.trunc() as i32;
+        let minutes = ((timezone_hours - hours as f32) * 60.0) as i32;
+        let offset_seconds = hours * 3600 + minutes * 60;
 
-        Ok(datetime_utc.to_rfc3339())
+        // Interpret the naive datetime as being in the specified timezone
+        // First create a UTC datetime by subtracting the offset
+        let adjusted_naive_datetime =
+            naive_datetime - chrono::Duration::seconds(offset_seconds as i64);
+
+        // Convert to UTC datetime
+        #[allow(deprecated)]
+        let utc_datetime = DateTime::<Utc>::from_utc(adjusted_naive_datetime, Utc);
+
+        // Return in RFC3339 format
+        Ok(utc_datetime.to_rfc3339())
     }
 }
 
