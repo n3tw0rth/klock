@@ -36,6 +36,7 @@ impl Clock for ClockifyClock {
     }
 
     async fn init(&mut self, args: Args) -> Result<()> {
+        info!("init clockify");
         let api_token = Secrets::get(&ClockifySecrets::ApiToken.to_string()).unwrap_or_default();
         let workspace_id =
             Secrets::get(&ClockifySecrets::WorkspaceId.to_string()).unwrap_or_default();
@@ -45,12 +46,17 @@ impl Clock for ClockifyClock {
             self.api_token = api_token;
             self.workspace_id = workspace_id;
         } else {
-            helpers::promt_user("enter the atlassian servername")?;
+            println!();
+            println!("==================================================");
+            println!("You are NOT authenticated with Clockify.");
+            println!("Please provide the following credentials to proceed:");
+            println!("==================================================");
+            helpers::promt_user("Enter the clockify api token")?;
             self.api_token = helpers::read_stdin()?;
             Secrets::set(&ClockifySecrets::ApiToken.to_string(), &self.api_token)?;
 
             // get the workspace
-            self.set_workspace_id().await?;
+            self.set_workspace_id(self.api_token.clone()).await?;
         }
 
         self.process_arguments(args).await?;
@@ -145,7 +151,7 @@ impl Clock for ClockifyClock {
 
 impl ClockifyClock {
     /// This will collect and store the clockify workspace id in the keyring
-    pub async fn set_workspace_id(&mut self) -> Result<()> {
+    pub async fn set_workspace_id(&mut self, api_token: String) -> Result<()> {
         info!("requesting the workspace id");
         let mut url = BASE_URL.to_string();
         url.push_str("/workspaces");
@@ -153,7 +159,7 @@ impl ClockifyClock {
         let response = self
             .client
             .get(url)
-            .header("X-Api-Key", &self.api_token)
+            .header("X-Api-Key", api_token)
             .send()
             .await?
             .text()

@@ -54,7 +54,7 @@ impl Tracker {
         info!("create new entry");
 
         // validate if the end time is after and start
-        if start > end {
+        if start > end && !end.eq("-1") {
             return Err(Error::CustomError(
                 "End time must be later than start time.".to_string(),
             ));
