@@ -23,4 +23,8 @@ impl Clock for JiraClock {
     async fn log(&self) -> Result<()> {
         Ok(())
     }
+
+    async fn logout(&self) -> Result<()> {
+        Ok(())
+    }
 }

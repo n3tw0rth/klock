@@ -54,7 +54,7 @@ impl Tracker {
         info!("create new entry");
 
         // validate if the end time is after and start
-        if start > end {
+        if start > end && !end.eq("-1") {
             return Err(Error::CustomError(
                 "End time must be later than start time.".to_string(),
             ));
@@ -122,7 +122,6 @@ impl Tracker {
             return Ok(());
         }
 
-        println!("debug: does code reach here 117");
         // To stop the current task immediately, when at value is not passed
         let end_time = if at.eq("-1") {
             chrono::Local::now().format("%H%M").to_string()
