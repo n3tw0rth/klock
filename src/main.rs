@@ -14,14 +14,14 @@ async fn main() -> Result<()> {
     let config = ConfigParser::parse().await?;
     let args = Args::parse();
 
+    Jira::new().await.init(args.clone()).await?;
+
     let clocks = config.get_clocks()?;
     for clock in clocks {
         if clock.as_str() == "clockify" {
             ClockifyClock::new().await.init(args.clone()).await?;
         }
     }
-
-    Jira::new().await.init(args.clone()).await?;
 
     Ok(())
 }

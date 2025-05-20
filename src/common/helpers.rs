@@ -33,7 +33,7 @@ pub fn read_stdin() -> Result<String> {
     std::io::stdin()
         .read_line(&mut string)
         .map_err(|_| Error::CustomError("Failed to read user input".to_string()))?;
-    Ok(string)
+    Ok(string.trim().to_string())
 }
 
 /// Used when requests inputs from user
