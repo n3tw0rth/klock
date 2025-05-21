@@ -122,8 +122,6 @@ impl Clock for ClockifyClock {
                 start: formatted_start_string,
             };
 
-            println!("{:?}", payload);
-
             // create a time entry on clockify
             let mut url = BASE_URL.to_string();
             url.push_str("/workspaces");
@@ -134,8 +132,7 @@ impl Clock for ClockifyClock {
                 self.workspace_id.trim_matches('"')
             );
 
-            let response = self
-                .client
+            self.client
                 .post(&url)
                 .header("X-Api-Key", &self.api_token)
                 .json(&payload)
@@ -144,7 +141,7 @@ impl Clock for ClockifyClock {
                 .text()
                 .await?;
 
-            println!("{:?}", response);
+            println!("Time logged");
         }
 
         Ok(())

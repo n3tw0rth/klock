@@ -48,13 +48,15 @@ Once installed, you can begin tracking time with the following commands:
 #### Add a new project
 Running this command will show all the projects within the organization and you can save the selected project under the project code. This will update the configuration file.
 ```bash
-j add <project-code> <search-text>
+j add <project-code/search-text>  # if the project code is eg: EA-ACME-PROJECT, you can use `acme` as the key and use it with other commands
 ```
 
 #### Start a task
 This will log the current local timestamp. And this time stamp will be used when stoping the current task. No timers are used, just a simple time difference calculation at the task termination. 
 ```bash
-j start <project-code/search-text>
+j start <project-code> <search-text> # search for any in progress task. eg: to select a meeting tasks you can search for `mee` that will show you all the tasks contain `mee`. and select the meeting task.
+
+eg: j start acme mee
 ```
 
 #### End a task
