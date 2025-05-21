@@ -1,7 +1,7 @@
-name: Build and Push Docker Image
+name: Build and Push Docker Image and Rust Binaries
 
 on:
-  workflow_dispatch: # Manual trigger
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -16,24 +16,18 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      packages: write # Required for pushing to GHCR
-      contents: read # Required for reading repository content
+      packages: write
+      contents: read
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      # --- Lint Stage ---
 
       - name: Check formatting
         run: cargo fmt -- --check
 
       - name: Run Clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
-
-      # ---
-
-      # --- Build Stage ---
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -54,7 +48,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push
+      - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -66,4 +60,57 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # ---
+  build-binaries:
+    name: Build Rust Binaries
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            ext: ""
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            ext: .exe
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            ext: ""
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust target
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Build binary
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Upload binary as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: myapp-${{ matrix.target }}
+          path: target/${{ matrix.target }}/release/myapp${{ matrix.ext }}
+
+  release:
+    name: Upload Release Assets
+    needs: build-binaries
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    permissions:
+      contents: write  # Required to create releases
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.sha }}
+          name: Release ${{ github.sha }}
+          files: artifacts/**/*
+
