@@ -3,8 +3,6 @@ name: Build and Push Docker Image and Rust Binaries
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
     tags:
       - 'v*'  
 
@@ -101,7 +99,7 @@ jobs:
     name: Upload Release Assets
     needs: build-binaries
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: startsWith(github.ref, 'refs/tags/')
 
     permissions:
       contents: write  # Required to create releases
