@@ -232,6 +232,12 @@ impl Board for Jira {
             println!("==================================================");
             println!("You are NOT authenticated with Jira.");
             println!("Please provide the following credentials to proceed");
+            println!("- For the servername visit on of your project's board and copy. Omit https:// just paste the server name in the pattern xxx.atlassian.net");
+            println!(
+                "- For the user name enter the email provided by the company (used with jira)"
+            );
+            println!("- You can generate a jira api token here: https://id.atlassian.com/manage-profile/security/api-tokens");
+            println!("Please provide the following credentials to proceed");
             println!("==================================================");
             helpers::promt_user("Enter the atlassian servername (xxx.atlassian.net)")?;
             self.server = helpers::read_stdin()?;
