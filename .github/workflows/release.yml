@@ -69,9 +69,9 @@ jobs:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             ext: ""
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            ext: .exe
+          # - os: windows-latest
+          #   target: x86_64-pc-windows-msvc
+          #   ext: .exe
           - os: macos-latest
             target: x86_64-apple-darwin
             ext: ""
@@ -86,11 +86,14 @@ jobs:
       - name: Build binary
         run: cargo build --release --target ${{ matrix.target }}
 
+      - name: List built files
+        run: ls -lh target/${{ matrix.target }}/release/
+
       - name: Upload binary as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: myapp-${{ matrix.target }}
-          path: target/${{ matrix.target }}/release/myapp${{ matrix.ext }}
+          name: jired-${{ matrix.target }}
+          path: target/${{ matrix.target }}/release/jired${{ matrix.ext }}
 
   release:
     name: Upload Release Assets
