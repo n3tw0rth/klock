@@ -118,7 +118,7 @@ clocks = [
     "clockify",
 ]
 editor = "nvim"
-
+time_zone = 5.5
 [[clockify_projects]]
 code = ""
 key = ""
