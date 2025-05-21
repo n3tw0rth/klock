@@ -98,7 +98,7 @@ $: jired help
 Or use the prebuilt image from GHCR
 
 ```bash
-docker run -it --rm ghcr.io/n3tw0rth/jired:main bash
+docker run -it --user root --rm ghcr.io/n3tw0rth/jired:main bash
 $: jired help
 ```
 
