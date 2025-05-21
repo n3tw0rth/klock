@@ -54,7 +54,7 @@ j add <project-code> <search-text>
 #### Start a task
 This will log the current local timestamp. And this time stamp will be used when stoping the current task. No timers are used, just a simple time difference calculation at the task termination. 
 ```bash
-j start <project-code> <search-text>
+j start <project-code/search-text>
 ```
 
 #### End a task
