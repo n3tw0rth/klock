@@ -11,7 +11,7 @@ Once installed, you can begin tracking time with the following commands:
 #### Add a new project
 Running this command will show all the projects within the organization and you can save the selected project under the project code. This will update the configuration file.
 ```bash
-j add <project-code/search-text>  # if the project code is eg: EA-ACME-PROJECT, you can use `acme` as the key and use it with other commands
+j add <project-code> <search-text>  # if the project code is eg: EA-ACME-PROJECT, you can use `acme` as the key and add the search text to search thru the project codes
 ```
 
 #### Start a task
