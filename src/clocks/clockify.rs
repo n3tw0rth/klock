@@ -66,8 +66,8 @@ impl Clock for ClockifyClock {
     async fn process_arguments(&mut self, args: Args) -> Result<()> {
         match args.command {
             Commands::Log => self.log().await?,
-            Commands::Add { project } => {
-                self.add_new_project(project).await?;
+            Commands::Add { key, pattern } => {
+                self.add_new_project(key, pattern).await?;
             }
             Commands::Logout => {
                 self.logout().await?;
@@ -185,7 +185,7 @@ impl ClockifyClock {
     }
 
     /// This method is used to add a new project and save it in the config file
-    pub async fn add_new_project(&self, project: String) -> Result<()> {
+    pub async fn add_new_project(&self, key: String, pattern: String) -> Result<()> {
         let url = format!(
             "{}/workspaces/{}/projects",
             BASE_URL,
@@ -196,7 +196,7 @@ impl ClockifyClock {
             .client
             .get(url)
             .header("X-Api-Key", &self.api_token)
-            .query(&[("name", &project)])
+            .query(&[("name", &pattern)])
             .send()
             .await?
             .text()
@@ -229,11 +229,7 @@ impl ClockifyClock {
 
         ConfigParser::parse()
             .await?
-            .set_project(
-                project,
-                selected_item.name.clone(),
-                selected_item.id.clone(),
-            )?
+            .set_project(key, selected_item.name.clone(), selected_item.id.clone())?
             .update_config()
             .await?;
 

@@ -45,7 +45,12 @@ pub enum Commands {
         date: String,
     },
     /// Add a project
-    Add { project: String },
+    Add {
+        /// Defines the key that will be used to identify the project
+        key: String,
+        /// Pattern to search projects under your organization
+        pattern: String,
+    },
     /// Log time to the clocks
     Log,
     /// Edit the log file
