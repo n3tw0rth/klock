@@ -23,4 +23,3 @@ jobs:
       - run: cargo build
       - run: cargo test
       - run: cargo clippy
-  

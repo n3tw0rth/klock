@@ -3,7 +3,18 @@ name = "jired"
 version = "1.0.0"
 edition = "2021"
 license = "MIT"
+authors = ["n3tw0rth <waootkt3g@mozmail.com>"]
 keywords = ["cli", "time-logging","jira","clockify"]
+description = "A command-line tool for logging time across multiple time tracking platforms including Jira, Clockify, and more."
+homepage = "https://github.com/n3tw0rth/jired/blob/dev/readme.md"
+documentation = "https://github.com/n3tw0rth/jired/blob/dev/readme.md"
+repository = "https://github.com/n3tw0rth/jired"
+
+[package.metadata.wix]
+upgrade-guid = "13744C94-E3A5-4262-B085-E0CEDD86A8F5"
+path-guid = "EE2D2146-16B1-4653-AD6D-D5F5B9EFC9D9"
+license = false
+eula = false
 
 [dependencies]
 async-trait = "0.1.88"
@@ -35,3 +46,8 @@ clippy = "0.0.302"
 
 [profile.dev]
 incremental = true
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
