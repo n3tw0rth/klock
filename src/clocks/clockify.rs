@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use clap::ValueEnum;
 use reqwest::{Client, ClientBuilder};
 use serde::{Deserialize, Serialize};
 use strum::{EnumIter, IntoEnumIterator};
@@ -10,7 +11,7 @@ use crate::common::tracker::Tracker;
 use crate::common::{helpers, Secrets};
 use crate::error::Error;
 use crate::error::{Error::ClockifyError, Result};
-use crate::{Args, Commands};
+use crate::{Args, Commands, ProjectType};
 
 const BASE_URL: &str = "https://api.clockify.me/api/v1";
 
@@ -66,8 +67,12 @@ impl Clock for ClockifyClock {
     async fn process_arguments(&mut self, args: Args) -> Result<()> {
         match args.command {
             Commands::Log => self.log().await?,
-            Commands::Add { key, pattern } => {
-                self.add_new_project(key, pattern).await?;
+            Commands::Add {
+                project_type,
+                key,
+                pattern,
+            } => {
+                self.add_new_project(project_type, key, pattern).await?;
             }
             Commands::Logout => {
                 self.logout().await?;
@@ -185,7 +190,24 @@ impl ClockifyClock {
     }
 
     /// This method is used to add a new project and save it in the config file
-    pub async fn add_new_project(&self, key: String, pattern: String) -> Result<()> {
+    pub async fn add_new_project(
+        &self,
+        project_type: ProjectType,
+        key: String,
+        pattern: String,
+    ) -> Result<()> {
+        info!("Adding new clockify project");
+
+        if project_type
+            .to_possible_value()
+            .unwrap_or_default()
+            .get_name()
+            == "clockify"
+        {
+            // skip with out any error, as this should only run if the project type is clockify
+            return Ok(());
+        }
+
         let url = format!(
             "{}/workspaces/{}/projects",
             BASE_URL,
