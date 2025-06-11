@@ -51,7 +51,13 @@ id = ""
         })
     }
 
-    pub fn set_project(&mut self, key: String, code: String, id: String) -> Result<&mut Self> {
+    pub fn set_project(
+        &mut self,
+        _type: &str,
+        key: String,
+        code: String,
+        id: String,
+    ) -> Result<&mut Self> {
         let project = Project { id, code, key };
         self.config.clockify_projects.push(project);
 
@@ -84,15 +90,17 @@ pub struct AppConfig {
     pub clocks: Vec<String>,
     pub editor: Option<String>,
     pub clockify_projects: Vec<Project>,
+    pub jira_projects: Vec<Project>,
     pub time_zone: Option<f32>,
 }
 
 impl Default for AppConfig {
     fn default() -> Self {
         AppConfig {
-            clocks: vec!["jira".to_string(), "clockify".to_string()],
+            clocks: vec!["jira".to_string()],
             editor: None,
             clockify_projects: vec![Project::default()],
+            jira_projects: vec![Project::default()],
             time_zone: Some(0.0),
         }
     }

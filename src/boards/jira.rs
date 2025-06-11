@@ -331,10 +331,9 @@ impl Board for Jira {
             .to_possible_value()
             .unwrap_or_default()
             .get_name()
-            == "jira"
+            .eq("jira")
         {
-            // WIP: Adding jira project to cli
-            println!("Adding new jira project");
+            //WIP: saving jira projects
         }
         Ok(())
     }

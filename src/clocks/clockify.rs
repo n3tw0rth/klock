@@ -196,65 +196,67 @@ impl ClockifyClock {
         key: String,
         pattern: String,
     ) -> Result<()> {
-        info!("Adding new clockify project");
-
         if project_type
             .to_possible_value()
-            .unwrap_or_default()
+            .unwrap()
             .get_name()
-            == "clockify"
+            .eq("clockify")
         {
-            // skip with out any error, as this should only run if the project type is clockify
-            return Ok(());
+            info!("Adding new clockify project");
+            let url = format!(
+                "{}/workspaces/{}/projects",
+                BASE_URL,
+                self.workspace_id.trim_matches('"')
+            );
+
+            let response = self
+                .client
+                .get(url)
+                .header("X-Api-Key", &self.api_token)
+                .query(&[("name", &pattern)])
+                .send()
+                .await?
+                .text()
+                .await?;
+
+            let json =
+                serde_json::from_str::<Vec<ClockifyProjectsResponse>>(&response).map_err(|_| {
+                    ClockifyError("Error parsing projects response to json".to_string())
+                })?;
+
+            // select the right project
+            json.iter().enumerate().for_each(|(index, item)| {
+                println!("{} {:?}", index + 1, item.name);
+            });
+
+            // promt the user to select the correct code
+            let selected_item = if json.len() == 1 {
+                json.first()
+                    .ok_or("Project response is empty, check the project code again and try")
+                    .map_err(|e| Error::CustomError(e.to_string()))?
+            } else {
+                helpers::promt_user("Please select the correct project code")?;
+                let user_selection = helpers::read_stdin()?;
+                let index: usize = user_selection
+                    .trim()
+                    .parse()
+                    .expect("Please enter a valid value");
+                json.get(index - 1)
+                    .ok_or("Project response is empty, check the project code again and try")
+                    .map_err(|e| Error::CustomError(e.to_string()))?
+            };
+
+            ConfigParser::parse()
+                .await?
+                .set_project(
+                    "clockify",
+                    key,
+                    selected_item.name.clone(),
+                    selected_item.id.clone(),
+                )?
+                .update_config()
+                .await?;
         }
-
-        let url = format!(
-            "{}/workspaces/{}/projects",
-            BASE_URL,
-            self.workspace_id.trim_matches('"')
-        );
-
-        let response = self
-            .client
-            .get(url)
-            .header("X-Api-Key", &self.api_token)
-            .query(&[("name", &pattern)])
-            .send()
-            .await?
-            .text()
-            .await?;
-
-        let json = serde_json::from_str::<Vec<ClockifyProjectsResponse>>(&response)
-            .map_err(|_| ClockifyError("Error parsing projects response to json".to_string()))?;
-
-        // select the right project
-        json.iter().enumerate().for_each(|(index, item)| {
-            println!("{} {:?}", index + 1, item.name);
-        });
-
-        // promt the user to select the correct code
-        let selected_item = if json.len() == 1 {
-            json.first()
-                .ok_or("Project response is empty, check the project code again and try")
-                .map_err(|e| Error::CustomError(e.to_string()))?
-        } else {
-            helpers::promt_user("Please select the correct project code")?;
-            let user_selection = helpers::read_stdin()?;
-            let index: usize = user_selection
-                .trim()
-                .parse()
-                .expect("Please enter a valid value");
-            json.get(index - 1)
-                .ok_or("Project response is empty, check the project code again and try")
-                .map_err(|e| Error::CustomError(e.to_string()))?
-        };
-
-        ConfigParser::parse()
-            .await?
-            .set_project(key, selected_item.name.clone(), selected_item.id.clone())?
-            .update_config()
-            .await?;
-
         Ok(())
     }
 }
