@@ -59,7 +59,10 @@ id = ""
         id: String,
     ) -> Result<&mut Self> {
         let project = Project { id, code, key };
-        self.config.clockify_projects.push(project);
+        self.config
+            .clockify_projects
+            .get_or_insert_with(Vec::new)
+            .push(project);
 
         Ok(self)
     }
@@ -76,8 +79,12 @@ id = ""
         Ok(self.config.clocks.clone())
     }
 
-    pub fn get_projects(&self) -> Result<Vec<Project>> {
-        Ok(self.config.clockify_projects.clone())
+    pub fn get_projects(&mut self) -> Result<Vec<Project>> {
+        Ok(self
+            .config
+            .clockify_projects
+            .get_or_insert_with(Vec::new)
+            .clone())
     }
 
     pub fn get_editor(self) -> Result<String> {
@@ -89,8 +96,8 @@ id = ""
 pub struct AppConfig {
     pub clocks: Vec<String>,
     pub editor: Option<String>,
-    pub clockify_projects: Vec<Project>,
-    pub jira_projects: Vec<Project>,
+    pub clockify_projects: Option<Vec<Project>>,
+    pub jira_projects: Option<Vec<Project>>,
     pub time_zone: Option<f32>,
 }
 
@@ -99,8 +106,8 @@ impl Default for AppConfig {
         AppConfig {
             clocks: vec!["jira".to_string()],
             editor: None,
-            clockify_projects: vec![Project::default()],
-            jira_projects: vec![Project::default()],
+            clockify_projects: Option::None,
+            jira_projects: Option::None,
             time_zone: Some(0.0),
         }
     }
