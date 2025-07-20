@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use clap::ValueEnum;
 use reqwest::{Client, ClientBuilder};
 use serde::{Deserialize, Serialize};
 use strum::{EnumIter, IntoEnumIterator};
@@ -10,7 +11,7 @@ use crate::common::tracker::Tracker;
 use crate::common::{helpers, Secrets};
 use crate::error::Error;
 use crate::error::{Error::ClockifyError, Result};
-use crate::{Args, Commands};
+use crate::{Args, Commands, ProjectType};
 
 const BASE_URL: &str = "https://api.clockify.me/api/v1";
 
@@ -66,8 +67,12 @@ impl Clock for ClockifyClock {
     async fn process_arguments(&mut self, args: Args) -> Result<()> {
         match args.command {
             Commands::Log => self.log().await?,
-            Commands::Add { key, pattern } => {
-                self.add_new_project(key, pattern).await?;
+            Commands::Add {
+                project_type,
+                key,
+                pattern,
+            } => {
+                self.add_new_project(project_type, key, pattern).await?;
             }
             Commands::Logout => {
                 self.logout().await?;
@@ -185,54 +190,73 @@ impl ClockifyClock {
     }
 
     /// This method is used to add a new project and save it in the config file
-    pub async fn add_new_project(&self, key: String, pattern: String) -> Result<()> {
-        let url = format!(
-            "{}/workspaces/{}/projects",
-            BASE_URL,
-            self.workspace_id.trim_matches('"')
-        );
+    pub async fn add_new_project(
+        &self,
+        project_type: ProjectType,
+        key: String,
+        pattern: String,
+    ) -> Result<()> {
+        if project_type
+            .to_possible_value()
+            .unwrap()
+            .get_name()
+            .eq("clockify")
+        {
+            info!("Adding new clockify project");
+            let url = format!(
+                "{}/workspaces/{}/projects",
+                BASE_URL,
+                self.workspace_id.trim_matches('"')
+            );
 
-        let response = self
-            .client
-            .get(url)
-            .header("X-Api-Key", &self.api_token)
-            .query(&[("name", &pattern)])
-            .send()
-            .await?
-            .text()
-            .await?;
+            let response = self
+                .client
+                .get(url)
+                .header("X-Api-Key", &self.api_token)
+                .query(&[("name", &pattern)])
+                .send()
+                .await?
+                .text()
+                .await?;
 
-        let json = serde_json::from_str::<Vec<ClockifyProjectsResponse>>(&response)
-            .map_err(|_| ClockifyError("Error parsing projects response to json".to_string()))?;
+            let json =
+                serde_json::from_str::<Vec<ClockifyProjectsResponse>>(&response).map_err(|_| {
+                    ClockifyError("Error parsing projects response to json".to_string())
+                })?;
 
-        // select the right project
-        json.iter().enumerate().for_each(|(index, item)| {
-            println!("{} {:?}", index + 1, item.name);
-        });
+            // select the right project
+            json.iter().enumerate().for_each(|(index, item)| {
+                println!("{} {:?}", index + 1, item.name);
+            });
 
-        // promt the user to select the correct code
-        let selected_item = if json.len() == 1 {
-            json.first()
-                .ok_or("Project response is empty, check the project code again and try")
-                .map_err(|e| Error::CustomError(e.to_string()))?
-        } else {
-            helpers::promt_user("Please select the correct project code")?;
-            let user_selection = helpers::read_stdin()?;
-            let index: usize = user_selection
-                .trim()
-                .parse()
-                .expect("Please enter a valid value");
-            json.get(index - 1)
-                .ok_or("Project response is empty, check the project code again and try")
-                .map_err(|e| Error::CustomError(e.to_string()))?
-        };
+            // promt the user to select the correct code
+            let selected_item = if json.len() == 1 {
+                json.first()
+                    .ok_or("Project response is empty, check the project code again and try")
+                    .map_err(|e| Error::CustomError(e.to_string()))?
+            } else {
+                helpers::promt_user("Please select the correct project code")?;
+                let user_selection = helpers::read_stdin()?;
+                let index: usize = user_selection
+                    .trim()
+                    .parse()
+                    .expect("Please enter a valid value");
+                json.get(index - 1)
+                    .ok_or("Project response is empty, check the project code again and try")
+                    .map_err(|e| Error::CustomError(e.to_string()))?
+            };
 
-        ConfigParser::parse()
-            .await?
-            .set_project(key, selected_item.name.clone(), selected_item.id.clone())?
-            .update_config()
-            .await?;
-
+            ConfigParser::parse()
+                .await?
+                .set_project(
+                    "clockify",
+                    key,
+                    selected_item.name.clone(),
+                    selected_item.id.clone(),
+                )?
+                .update_config()
+                .await?;
+        }
         Ok(())
     }
 }

@@ -5,7 +5,7 @@ pub mod error;
 pub mod prelude;
 pub mod tracing;
 
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 
 #[derive(Parser, Debug, Clone)]
 #[command(version, about, long_about = None)]
@@ -46,6 +46,9 @@ pub enum Commands {
     },
     /// Add a project
     Add {
+        /// Project type
+        #[arg(value_enum, value_name = "type")]
+        project_type: ProjectType,
         /// Defines the key that will be used to identify the project
         key: String,
         /// Pattern to search projects under your organization
@@ -78,6 +81,12 @@ pub enum StartSubcommandB {
         #[arg(value_name = "FROM")]
         start: String,
     },
+}
+
+#[derive(Debug, Clone, ValueEnum)]
+pub enum ProjectType {
+    Jira,
+    Clockify,
 }
 
 impl Default for StartSubcommandA {

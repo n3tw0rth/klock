@@ -3,7 +3,7 @@ pub mod clickup;
 pub mod jira;
 
 use crate::error::Result;
-use crate::Args;
+use crate::{Args, ProjectType};
 
 #[async_trait]
 pub trait Board {
@@ -14,6 +14,7 @@ pub trait Board {
     async fn logout(&self) -> Result<()>;
     async fn pick_issue(&self, issues: Vec<JiraIssue>) -> Result<(String, String)>;
     async fn fuzzy_search(&mut self, project_code: &str, pattern: &str) -> Result<Vec<JiraIssue>>;
+    async fn add(&self, project_code: ProjectType, key: &str, pattern: &str) -> Result<()>;
 }
 
 /// These structs defines the jira issues REST API reponse

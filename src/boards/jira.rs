@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use clap::ValueEnum;
 use regex::Regex;
 use reqwest::{Client, ClientBuilder};
 use strum::{EnumIter, IntoEnumIterator};
@@ -7,7 +8,7 @@ use tracing::info;
 use crate::boards::{JiraIssue, JiraIssues};
 use crate::common::{helpers, tracker::Tracker, Secrets};
 use crate::error::{Error, Result};
-use crate::{Args, Commands, StartSubcommandA, StartSubcommandB};
+use crate::{Args, Commands, ProjectType, StartSubcommandA, StartSubcommandB};
 
 use super::Board;
 
@@ -183,6 +184,11 @@ impl Board for Jira {
                 }
             }
             Commands::Edit => self.tracker.open_editor().await,
+            Commands::Add {
+                project_type,
+                key,
+                pattern,
+            } => self.add(project_type, &key, &pattern).await?,
             _ => {}
         }
 
@@ -278,6 +284,8 @@ impl Board for Jira {
             .text()
             .await?;
 
+        println!("{response}");
+
         let json: JiraIssues = serde_json::from_str(&response)
             .map_err(|_| Error::CustomError("Error parsing issues response to json".to_string()))?;
 
@@ -315,6 +323,19 @@ impl Board for Jira {
             .collect::<Vec<JiraIssue>>();
 
         Ok(filtered_issues)
+    }
+
+    //WIP: adding jira projects
+    async fn add(&self, project_code: ProjectType, _key: &str, _pattern: &str) -> Result<()> {
+        if project_code
+            .to_possible_value()
+            .unwrap_or_default()
+            .get_name()
+            .eq("jira")
+        {
+            //WIP: saving jira projects
+        }
+        Ok(())
     }
 }
 
