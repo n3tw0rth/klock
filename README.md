@@ -4,7 +4,7 @@
 
 **`jired`** is a command-line interface tool designed to make **logging time on Jira issues** fast and efficient. This project is currently undergoing a complete **rewrite in Rust** to deliver better performance, improved safety, and a more robust user experience.
 
-If you are looking for the original version of `jired`, please see the **[Deprecated Version](https://www.google.com/search?q=%23deprecated-version)** section below.
+If you are looking for the original version of `jired`, please see the **[Deprecated Version](https://github.com/n3tw0rth/jired/branches)** section below.
 
 ## **Development Status**
 
