@@ -1,0 +1,183 @@
+{
+  "main": {
+    "id": "3d0ed1b898e8823d",
+    "type": "split",
+    "children": [
+      {
+        "id": "ceb0359d0320983e",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "d0c18e9b8f678dd8",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Commands, Subcommands and Arguments.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Commands, Subcommands and Arguments"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "3e56e585050649d7",
+    "type": "split",
+    "children": [
+      {
+        "id": "6e699d47eb004e5a",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "56909b1c283bcec4",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "58732d9d089a87b5",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "b53e5d27aecde0fd",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "bb437e8bc5100717",
+    "type": "split",
+    "children": [
+      {
+        "id": "220838c637d48ffb",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "d0477f6577f298fc",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "Commands, Subcommands and Arguments.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks for Commands, Subcommands and Arguments"
+            }
+          },
+          {
+            "id": "0e559ef676a51582",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "Commands, Subcommands and Arguments.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from Commands, Subcommands and Arguments"
+            }
+          },
+          {
+            "id": "d6457821866265f8",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "6ddf31e64fad1ced",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "Commands, Subcommands and Arguments.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline of Commands, Subcommands and Arguments"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false
+    }
+  },
+  "active": "d0c18e9b8f678dd8",
+  "lastOpenFiles": [
+    "Integrations.md",
+    "Configuration.md",
+    "Untitled.canvas",
+    "Commands, Subcommands and Arguments.md",
+    "Clocks.md",
+    "Boards.md",
+    "Jired.md",
+    "Secrets Management.md"
+  ]
+}
