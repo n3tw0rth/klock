@@ -12,7 +12,7 @@ The project is actively under development. Contributions and feedback are welcom
 
 | Status | Details |
 | :--- | :--- |
-| **Language** | Rust 🦀 |
+| **Language** | Go  |
 | **Current Stage** | Active Rewrite |
 
 ## **Contributing**
