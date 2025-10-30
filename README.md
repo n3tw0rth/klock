@@ -1,3 +1,6 @@
+<img width="3535" height="1793" alt="Jired" src="https://github.com/user-attachments/assets/9f8e106b-d2e6-4a9a-8a9b-f0f40c5c6b03" />
+
+
 ## **Jira Time Logger CLI (jired)**
 
 ## **Overview**
