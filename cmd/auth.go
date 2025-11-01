@@ -17,9 +17,12 @@ var loginCmd = &cobra.Command{
 	Use:   "login",
 	Short: "A brief description of your command",
 	Run: func(cmd *cobra.Command, args []string) {
-		selectedItem := tui.Show()
+		options := []string{"Board", "Clock"}
+		selectedItem := tui.ShowSimpleList("Select the Integration Type:", options)
 
-		println("selected item %s", selectedItem)
+		result := selectedItem.(tui.SelectorModel)
+
+		println("selected item %s", result.Cursor)
 	},
 }
 
