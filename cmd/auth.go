@@ -9,13 +9,13 @@ import (
 
 var authCmd = &cobra.Command{
 	Use:   "auth",
-	Short: "A brief description of your command",
+	Short: "Authenticate with your Boards and Clocks",
 	Args:  cobra.ExactArgs(1),
 }
 
 var loginCmd = &cobra.Command{
 	Use:   "login",
-	Short: "A brief description of your command",
+	Short: "Auth action : Login",
 	Run: func(cmd *cobra.Command, args []string) {
 		options := []string{"Board", "Clock"}
 		selectedItem := tui.ShowSimpleList("Select the Integration Type:", options)
@@ -28,7 +28,7 @@ var loginCmd = &cobra.Command{
 
 var logoutCmd = &cobra.Command{
 	Use:   "logout",
-	Short: "A brief description of your command",
+	Short: "Auth action : Logout",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("login called")
 	},

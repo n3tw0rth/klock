@@ -8,7 +8,7 @@ import (
 
 var startCmd = &cobra.Command{
 	Use:   "start",
-	Short: "A brief description of your command",
+	Short: "Record start working on a issue",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("start called")
 	},
