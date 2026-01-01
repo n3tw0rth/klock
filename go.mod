@@ -1,4 +1,4 @@
-module github.com/n3tw0rth/jired
+module github.com/n3tw0rth/klock
 
 go 1.24.0
 

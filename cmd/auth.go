@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/n3tw0rth/jired/internal/tui"
+	"github.com/n3tw0rth/klock/internal/tui"
 	"github.com/spf13/cobra"
 )
 

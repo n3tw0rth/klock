@@ -7,7 +7,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "jired",
+	Use:   "klock",
 	Short: "A QoL tool that simplifies Jira time logging and issue tracking.",
 }
 
