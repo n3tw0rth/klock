@@ -3,7 +3,9 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/n3tw0rth/klock/internal/boards"
 	"github.com/n3tw0rth/klock/internal/tui"
+
 	"github.com/spf13/cobra"
 )
 
@@ -21,6 +23,8 @@ var loginCmd = &cobra.Command{
 		selectedItem := tui.ShowSimpleList("Select the Integration Type:", options)
 
 		result := selectedItem.(tui.SelectorModel)
+
+		tui.ShowSimpleList("Selection the Board", boards.GetBoards())
 
 		println("selected item %s", result.Cursor)
 	},
