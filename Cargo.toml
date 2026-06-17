@@ -1,0 +1,29 @@
+[package]
+name = "jired"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "jired"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.12", features = ["json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+inquire = { version = "0.7", features = ["date"] }
+anyhow = "1"
+thiserror = "1"
+chrono = { version = "0.4", features = ["serde"] }
+keyring = "2"
+fuzzy-matcher = "0.3"
+dirs = "5"
+async-trait = "0.1"
+base64 = "0.22"
+colored = "2"
+
+[dev-dependencies]
+tokio-test = "0.4"

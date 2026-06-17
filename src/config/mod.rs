@@ -1,0 +1,151 @@
+pub mod models;
+
+use std::path::PathBuf;
+use chrono::NaiveDate;
+use keyring::Entry;
+
+use crate::error::{JiredError, Result};
+use models::{AppConfig, Session};
+
+pub fn config_path() -> PathBuf {
+    dirs::home_dir()
+        .expect("home dir not found")
+        .join(".jired")
+        .join("config.toml")
+}
+
+pub fn session_path() -> PathBuf {
+    dirs::home_dir()
+        .expect("home dir not found")
+        .join(".jired")
+        .join("session.toml")
+}
+
+pub fn state_path() -> PathBuf {
+    dirs::home_dir()
+        .expect("home dir not found")
+        .join(".jired")
+        .join("state.toml")
+}
+
+fn ensure_dir(path: &PathBuf) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| JiredError::ConfigError(e.to_string()))?;
+    }
+    Ok(())
+}
+
+pub fn load_config() -> Result<AppConfig> {
+    let path = config_path();
+    if !path.exists() {
+        return Ok(AppConfig::default());
+    }
+    let content = std::fs::read_to_string(&path)
+        .map_err(|e| JiredError::ConfigError(e.to_string()))?;
+    toml::from_str(&content).map_err(|e| JiredError::ConfigError(e.to_string()))
+}
+
+pub fn save_config(config: &AppConfig) -> Result<()> {
+    let path = config_path();
+    ensure_dir(&path)?;
+    let content = toml::to_string_pretty(config)
+        .map_err(|e| JiredError::ConfigError(e.to_string()))?;
+    std::fs::write(&path, content).map_err(|e| JiredError::ConfigError(e.to_string()))
+}
+
+pub fn load_session() -> Result<Option<Session>> {
+    let path = session_path();
+    if !path.exists() {
+        return Ok(None);
+    }
+    let content = std::fs::read_to_string(&path)
+        .map_err(|e| JiredError::SessionError(e.to_string()))?;
+    let session = toml::from_str(&content)
+        .map_err(|e| JiredError::SessionError(e.to_string()))?;
+    Ok(Some(session))
+}
+
+pub fn save_session(session: &Session) -> Result<()> {
+    let path = session_path();
+    ensure_dir(&path)?;
+    let content = toml::to_string_pretty(session)
+        .map_err(|e| JiredError::SessionError(e.to_string()))?;
+    std::fs::write(&path, content).map_err(|e| JiredError::SessionError(e.to_string()))
+}
+
+pub fn clear_session() -> Result<()> {
+    let path = session_path();
+    if path.exists() {
+        std::fs::remove_file(&path).map_err(|e| JiredError::SessionError(e.to_string()))?;
+    }
+    Ok(())
+}
+
+pub fn load_active_date() -> Result<NaiveDate> {
+    let path = state_path();
+    if !path.exists() {
+        return Ok(chrono::Local::now().date_naive());
+    }
+    let content = std::fs::read_to_string(&path)
+        .map_err(|e| JiredError::ConfigError(e.to_string()))?;
+    let map: toml::Table = toml::from_str(&content)
+        .map_err(|e| JiredError::ConfigError(e.to_string()))?;
+    if let Some(toml::Value::String(s)) = map.get("active_date") {
+        NaiveDate::parse_from_str(s, "%Y-%m-%d")
+            .map_err(|e| JiredError::ConfigError(e.to_string()))
+    } else {
+        Ok(chrono::Local::now().date_naive())
+    }
+}
+
+pub fn save_active_date(date: NaiveDate) -> Result<()> {
+    let path = state_path();
+    ensure_dir(&path)?;
+    let content = format!("active_date = \"{}\"\n", date.format("%Y-%m-%d"));
+    std::fs::write(&path, content).map_err(|e| JiredError::ConfigError(e.to_string()))
+}
+
+pub fn store_credential(service: &str, account: &str, secret: &str) -> Result<()> {
+    let entry = Entry::new(service, account)
+        .map_err(|e| JiredError::AuthError(e.to_string()))?;
+    entry.set_password(secret)
+        .map_err(|e| JiredError::AuthError(e.to_string()))
+}
+
+pub fn get_credential(service: &str, account: &str) -> Result<String> {
+    let entry = Entry::new(service, account)
+        .map_err(|e| JiredError::AuthError(e.to_string()))?;
+    entry.get_password().map_err(|_| {
+        JiredError::AuthError(format!("No credential found for {service}/{account}. Run `jired auth login` first."))
+    })
+}
+
+pub fn delete_credential(service: &str, account: &str) -> Result<()> {
+    let entry = Entry::new(service, account)
+        .map_err(|e| JiredError::AuthError(e.to_string()))?;
+    entry.delete_password()
+        .map_err(|e: keyring::Error| JiredError::AuthError(e.to_string()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use models::{BoardConfig, BoardPlatform};
+
+    #[test]
+    fn test_config_roundtrip() {
+        let mut config = AppConfig::default();
+        config.boards.push(BoardConfig {
+            id: "jira-test".to_string(),
+            platform: BoardPlatform::Jira,
+            base_url: "https://test.atlassian.net".to_string(),
+            email: "test@example.com".to_string(),
+            team_id: None,
+        });
+        let serialized = toml::to_string_pretty(&config).unwrap();
+        let deserialized: AppConfig = toml::from_str(&serialized).unwrap();
+        assert_eq!(deserialized.boards.len(), 1);
+        assert_eq!(deserialized.boards[0].id, "jira-test");
+    }
+}
