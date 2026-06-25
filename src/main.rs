@@ -27,6 +27,7 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
             project_code,
             search_string,
         } => commands::add::handle(project_code, search_string).await?,
+        Commands::Remove { project_code } => commands::remove::handle(project_code).await?,
         Commands::Start {
             project_code,
             search_string,

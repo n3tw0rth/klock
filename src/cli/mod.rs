@@ -21,6 +21,11 @@ pub enum Commands {
         /// Search string for filtering projects
         search_string: Option<String>,
     },
+    /// Unlink a board or clock integration from a project
+    Remove {
+        /// Project code (e.g. JP)
+        project_code: Option<String>,
+    },
     /// Begin a tracked session on a task
     Start {
         /// Project code (e.g. JP)
