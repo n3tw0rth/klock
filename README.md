@@ -58,3 +58,7 @@ Each command runs interactively when arguments are omitted.
 - `~/.klock/state.toml` — active logging date
 - `~/.klock/pending.toml` — queued entries
 - API tokens — OS keyring, service `klock-<integration-id>`
+
+## License
+
+[MIT](LICENSE)
