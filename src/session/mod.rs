@@ -1,5 +1,4 @@
 use chrono::NaiveDate;
-use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
 use inquire::{Confirm, DateSelect, Password, Select, Text};
 
 use crate::error::{KlockError, Result};
@@ -9,48 +8,17 @@ pub fn fuzzy_select<T>(items: Vec<T>, label_fn: impl Fn(&T) -> String, prompt: &
         return Err(KlockError::NotFound(format!("No results for: {prompt}")));
     }
 
-    if items.len() == 1 {
-        let label = label_fn(&items[0]);
-        let confirmed = Confirm::new(&format!("Select \"{label}\"?"))
-            .with_default(true)
-            .prompt()
-            .map_err(|e| KlockError::NotFound(e.to_string()))?;
-        if confirmed {
-            return Ok(items.into_iter().next().unwrap());
-        } else {
-            return Err(KlockError::NotFound("Selection cancelled".to_string()));
-        }
-    }
-
-    let matcher = SkimMatcherV2::default();
-    let query = Text::new(prompt)
-        .prompt()
-        .map_err(|e| KlockError::NotFound(e.to_string()))?;
-
-    let mut scored: Vec<(i64, usize)> = items
-        .iter()
-        .enumerate()
-        .filter_map(|(i, item)| {
-            matcher
-                .fuzzy_match(&label_fn(item), &query)
-                .map(|score| (score, i))
-        })
-        .collect();
-
-    if scored.is_empty() {
-        return Err(KlockError::NotFound(format!("No matches for: {query}")));
-    }
-
-    scored.sort_by(|a, b| b.0.cmp(&a.0));
-
-    let options: Vec<String> = scored.iter().map(|(_, i)| label_fn(&items[*i])).collect();
+    let options: Vec<String> = items.iter().map(&label_fn).collect();
     let selected = Select::new(prompt, options.clone())
+        .with_page_size(15)
         .prompt()
         .map_err(|e| KlockError::NotFound(e.to_string()))?;
 
-    let idx = scored[options.iter().position(|o| o == &selected).unwrap()].1;
-    let result = items.into_iter().nth(idx).unwrap();
-    Ok(result)
+    let idx = options
+        .iter()
+        .position(|o| o == &selected)
+        .ok_or_else(|| KlockError::NotFound("Selection mismatch".to_string()))?;
+    Ok(items.into_iter().nth(idx).unwrap())
 }
 
 pub fn prompt_text(label: &str, default: Option<&str>) -> Result<String> {
@@ -70,6 +38,7 @@ pub fn prompt_password(label: &str) -> Result<String> {
 
 pub fn prompt_select(label: &str, options: Vec<String>) -> Result<String> {
     Select::new(label, options)
+        .with_page_size(15)
         .prompt()
         .map_err(|e| KlockError::ConfigError(e.to_string()))
 }

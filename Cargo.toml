@@ -19,7 +19,6 @@ anyhow = "1"
 thiserror = "1"
 chrono = { version = "0.4", features = ["serde"] }
 keyring = "2"
-fuzzy-matcher = "0.3"
 dirs = "5"
 async-trait = "0.1"
 base64 = "0.22"

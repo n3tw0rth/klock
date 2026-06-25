@@ -105,11 +105,26 @@ impl Board for JiraBoard {
 
     async fn search_tasks(&self, project_id: &str, query: &str) -> Result<Vec<RemoteTask>> {
         let jql = format!("project={project_id} AND text~\"{query}\"");
+        self.run_jql(&jql, 100).await
+    }
+
+    fn platform_name(&self) -> &str {
+        "Jira"
+    }
+}
+
+impl JiraBoard {
+    async fn run_jql(&self, jql: &str, max_results: u32) -> Result<Vec<RemoteTask>> {
         let url = format!("{}/rest/api/3/search/jql", self.base_url);
+        let max_str = max_results.to_string();
         let resp = self
             .client
             .get(&url)
-            .query(&[("jql", jql.as_str()), ("fields", "summary,status,assignee")])
+            .query(&[
+                ("jql", jql),
+                ("fields", "summary,status,assignee"),
+                ("maxResults", max_str.as_str()),
+            ])
             .header("Authorization", &self.auth_header)
             .header("Accept", "application/json")
             .send()
@@ -140,9 +155,5 @@ impl Board for JiraBoard {
                 assignee: i.fields.assignee.map(|a| a.display_name),
             })
             .collect())
-    }
-
-    fn platform_name(&self) -> &str {
-        "Jira"
     }
 }

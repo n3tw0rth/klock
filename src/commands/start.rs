@@ -1,7 +1,7 @@
 use chrono::Local;
 use colored::Colorize;
 
-use crate::boards::build_board;
+use crate::boards::{build_board, RemoteTask};
 use crate::config::{self, models::Session};
 use crate::error::{KlockError, Result};
 use crate::session::{fuzzy_select, prompt_text, prompt_time};
@@ -65,7 +65,7 @@ pub async fn handle(
 
     let selected = fuzzy_select(
         tasks,
-        |t| format!("[{}] {} ({})", t.key, t.title, t.status),
+        |t: &RemoteTask| format!("[{}] {} ({})", t.key, t.title, t.status),
         "Select task:",
     )?;
 
