@@ -4,7 +4,7 @@ use colored::Colorize;
 use crate::boards::{build_board, RemoteTask};
 use crate::config::{self, models::Session};
 use crate::error::{KlockError, Result};
-use crate::session::{fuzzy_select, prompt_text, prompt_time};
+use crate::session::{fuzzy_select, prompt_select, prompt_text, prompt_time};
 
 pub async fn handle(
     project_code: Option<String>,
@@ -18,12 +18,32 @@ pub async fn handle(
         ));
     }
 
+    let cfg = config::load_config()?;
+
     let code = match project_code {
         Some(c) => c,
-        None => prompt_text("Project code:", None)?,
+        None => {
+            if cfg.projects.is_empty() {
+                return Err(KlockError::ConfigError(
+                    "No projects configured. Run `klock add` to link one.".to_string(),
+                ));
+            }
+            let options: Vec<String> = cfg
+                .projects
+                .iter()
+                .map(|p| {
+                    if p.platform_project_name.is_empty() {
+                        p.code.clone()
+                    } else {
+                        format!("{} — {}", p.code, p.platform_project_name)
+                    }
+                })
+                .collect();
+            let picked = prompt_select("Project:", options)?;
+            picked.split(" — ").next().unwrap_or(&picked).to_string()
+        }
     };
 
-    let cfg = config::load_config()?;
     let project = cfg
         .projects
         .iter()
