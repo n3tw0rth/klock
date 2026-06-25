@@ -3,7 +3,7 @@ use reqwest::Client;
 use serde::Deserialize;
 
 use super::{Board, RemoteProject, RemoteTask};
-use crate::error::{JiredError, Result};
+use crate::error::{KlockError, Result};
 
 pub struct ClickUpBoard {
     api_token: String,
@@ -68,10 +68,10 @@ impl Board for ClickUpBoard {
             .header("Authorization", &self.api_token)
             .send()
             .await
-            .map_err(|e| JiredError::NetworkError(e.to_string()))?;
+            .map_err(|e| KlockError::NetworkError(e.to_string()))?;
 
         if !resp.status().is_success() {
-            return Err(JiredError::PlatformError(format!(
+            return Err(KlockError::PlatformError(format!(
                 "ClickUp returned {}: {}",
                 resp.status(),
                 resp.text().await.unwrap_or_default()
@@ -81,7 +81,7 @@ impl Board for ClickUpBoard {
         let result: SpacesResponse = resp
             .json()
             .await
-            .map_err(|e| JiredError::NetworkError(e.to_string()))?;
+            .map_err(|e| KlockError::NetworkError(e.to_string()))?;
 
         let q = query.to_lowercase();
         Ok(result
@@ -107,10 +107,10 @@ impl Board for ClickUpBoard {
             .header("Authorization", &self.api_token)
             .send()
             .await
-            .map_err(|e| JiredError::NetworkError(e.to_string()))?;
+            .map_err(|e| KlockError::NetworkError(e.to_string()))?;
 
         if !resp.status().is_success() {
-            return Err(JiredError::PlatformError(format!(
+            return Err(KlockError::PlatformError(format!(
                 "ClickUp returned {}: {}",
                 resp.status(),
                 resp.text().await.unwrap_or_default()
@@ -120,7 +120,7 @@ impl Board for ClickUpBoard {
         let result: TasksResponse = resp
             .json()
             .await
-            .map_err(|e| JiredError::NetworkError(e.to_string()))?;
+            .map_err(|e| KlockError::NetworkError(e.to_string()))?;
 
         Ok(result
             .tasks

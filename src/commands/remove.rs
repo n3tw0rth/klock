@@ -1,7 +1,7 @@
 use colored::Colorize;
 
 use crate::config;
-use crate::error::{JiredError, Result};
+use crate::error::{KlockError, Result};
 use crate::session::{prompt_confirm, prompt_select, prompt_text};
 
 const BOARD_TAG: &str = "[board]";
@@ -19,7 +19,7 @@ pub async fn handle(project_code: Option<String>) -> Result<()> {
         .projects
         .iter()
         .position(|p| p.code.eq_ignore_ascii_case(&code))
-        .ok_or_else(|| JiredError::NotFound(format!("Project '{code}' not found")))?;
+        .ok_or_else(|| KlockError::NotFound(format!("Project '{code}' not found")))?;
 
     let mut options: Vec<String> = Vec::new();
     options.extend(
@@ -36,7 +36,7 @@ pub async fn handle(project_code: Option<String>) -> Result<()> {
     );
 
     if options.is_empty() {
-        return Err(JiredError::ConfigError(format!(
+        return Err(KlockError::ConfigError(format!(
             "Project '{code}' has no integrations to remove"
         )));
     }
@@ -48,7 +48,7 @@ pub async fn handle(project_code: Option<String>) -> Result<()> {
     } else if let Some(rest) = selection.strip_prefix(&format!("{CLOCK_TAG} ")) {
         ("clock", rest.to_string())
     } else {
-        return Err(JiredError::ConfigError(format!(
+        return Err(KlockError::ConfigError(format!(
             "Unrecognized selection '{selection}'"
         )));
     };
@@ -103,7 +103,7 @@ fn warn_about_pending_for_clock(clock_id: &str) -> Result<()> {
                 .join(", ")
         );
         println!(
-            "  Unlinking only affects future sessions. Run `jired pending push` or `jired pending remove <id>` for these first if you don't want them to push to '{clock_id}'."
+            "  Unlinking only affects future sessions. Run `klock pending push` or `klock pending remove <id>` for these first if you don't want them to push to '{clock_id}'."
         );
     }
     Ok(())

@@ -4,7 +4,7 @@ use reqwest::Client;
 use serde::Deserialize;
 
 use super::{Board, RemoteProject, RemoteTask};
-use crate::error::{JiredError, Result};
+use crate::error::{KlockError, Result};
 
 pub struct JiraBoard {
     base_url: String,
@@ -77,10 +77,10 @@ impl Board for JiraBoard {
             .header("Accept", "application/json")
             .send()
             .await
-            .map_err(|e| JiredError::NetworkError(e.to_string()))?;
+            .map_err(|e| KlockError::NetworkError(e.to_string()))?;
 
         if !resp.status().is_success() {
-            return Err(JiredError::PlatformError(format!(
+            return Err(KlockError::PlatformError(format!(
                 "Jira returned {}: {}",
                 resp.status(),
                 resp.text().await.unwrap_or_default()
@@ -90,7 +90,7 @@ impl Board for JiraBoard {
         let page: JiraProjectPage = resp
             .json()
             .await
-            .map_err(|e| JiredError::NetworkError(e.to_string()))?;
+            .map_err(|e| KlockError::NetworkError(e.to_string()))?;
 
         Ok(page
             .values
@@ -114,10 +114,10 @@ impl Board for JiraBoard {
             .header("Accept", "application/json")
             .send()
             .await
-            .map_err(|e| JiredError::NetworkError(e.to_string()))?;
+            .map_err(|e| KlockError::NetworkError(e.to_string()))?;
 
         if !resp.status().is_success() {
-            return Err(JiredError::PlatformError(format!(
+            return Err(KlockError::PlatformError(format!(
                 "Jira returned {}: {}",
                 resp.status(),
                 resp.text().await.unwrap_or_default()
@@ -127,7 +127,7 @@ impl Board for JiraBoard {
         let result: JiraSearchResult = resp
             .json()
             .await
-            .map_err(|e| JiredError::NetworkError(e.to_string()))?;
+            .map_err(|e| KlockError::NetworkError(e.to_string()))?;
 
         Ok(result
             .issues

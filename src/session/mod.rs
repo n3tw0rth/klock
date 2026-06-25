@@ -2,11 +2,11 @@ use chrono::NaiveDate;
 use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
 use inquire::{Confirm, DateSelect, Password, Select, Text};
 
-use crate::error::{JiredError, Result};
+use crate::error::{KlockError, Result};
 
 pub fn fuzzy_select<T>(items: Vec<T>, label_fn: impl Fn(&T) -> String, prompt: &str) -> Result<T> {
     if items.is_empty() {
-        return Err(JiredError::NotFound(format!("No results for: {prompt}")));
+        return Err(KlockError::NotFound(format!("No results for: {prompt}")));
     }
 
     if items.len() == 1 {
@@ -14,18 +14,18 @@ pub fn fuzzy_select<T>(items: Vec<T>, label_fn: impl Fn(&T) -> String, prompt: &
         let confirmed = Confirm::new(&format!("Select \"{label}\"?"))
             .with_default(true)
             .prompt()
-            .map_err(|e| JiredError::NotFound(e.to_string()))?;
+            .map_err(|e| KlockError::NotFound(e.to_string()))?;
         if confirmed {
             return Ok(items.into_iter().next().unwrap());
         } else {
-            return Err(JiredError::NotFound("Selection cancelled".to_string()));
+            return Err(KlockError::NotFound("Selection cancelled".to_string()));
         }
     }
 
     let matcher = SkimMatcherV2::default();
     let query = Text::new(prompt)
         .prompt()
-        .map_err(|e| JiredError::NotFound(e.to_string()))?;
+        .map_err(|e| KlockError::NotFound(e.to_string()))?;
 
     let mut scored: Vec<(i64, usize)> = items
         .iter()
@@ -38,7 +38,7 @@ pub fn fuzzy_select<T>(items: Vec<T>, label_fn: impl Fn(&T) -> String, prompt: &
         .collect();
 
     if scored.is_empty() {
-        return Err(JiredError::NotFound(format!("No matches for: {query}")));
+        return Err(KlockError::NotFound(format!("No matches for: {query}")));
     }
 
     scored.sort_by(|a, b| b.0.cmp(&a.0));
@@ -46,7 +46,7 @@ pub fn fuzzy_select<T>(items: Vec<T>, label_fn: impl Fn(&T) -> String, prompt: &
     let options: Vec<String> = scored.iter().map(|(_, i)| label_fn(&items[*i])).collect();
     let selected = Select::new(prompt, options.clone())
         .prompt()
-        .map_err(|e| JiredError::NotFound(e.to_string()))?;
+        .map_err(|e| KlockError::NotFound(e.to_string()))?;
 
     let idx = scored[options.iter().position(|o| o == &selected).unwrap()].1;
     let result = items.into_iter().nth(idx).unwrap();
@@ -58,33 +58,33 @@ pub fn prompt_text(label: &str, default: Option<&str>) -> Result<String> {
     if let Some(d) = default {
         t = t.with_default(d);
     }
-    t.prompt().map_err(|e| JiredError::ConfigError(e.to_string()))
+    t.prompt().map_err(|e| KlockError::ConfigError(e.to_string()))
 }
 
 pub fn prompt_password(label: &str) -> Result<String> {
     Password::new(label)
         .without_confirmation()
         .prompt()
-        .map_err(|e| JiredError::AuthError(e.to_string()))
+        .map_err(|e| KlockError::AuthError(e.to_string()))
 }
 
 pub fn prompt_select(label: &str, options: Vec<String>) -> Result<String> {
     Select::new(label, options)
         .prompt()
-        .map_err(|e| JiredError::ConfigError(e.to_string()))
+        .map_err(|e| KlockError::ConfigError(e.to_string()))
 }
 
 pub fn prompt_confirm(label: &str) -> Result<bool> {
     Confirm::new(label)
         .with_default(false)
         .prompt()
-        .map_err(|e| JiredError::ConfigError(e.to_string()))
+        .map_err(|e| KlockError::ConfigError(e.to_string()))
 }
 
 pub fn prompt_date(label: &str) -> Result<NaiveDate> {
     DateSelect::new(label)
         .prompt()
-        .map_err(|e: inquire::InquireError| JiredError::ConfigError(e.to_string()))
+        .map_err(|e: inquire::InquireError| KlockError::ConfigError(e.to_string()))
 }
 
 pub fn prompt_time(label: &str, default: Option<&str>) -> Result<String> {
@@ -93,7 +93,7 @@ pub fn prompt_time(label: &str, default: Option<&str>) -> Result<String> {
         if let Some(d) = default {
             t = t.with_default(d);
         }
-        let val = t.prompt().map_err(|e| JiredError::ConfigError(e.to_string()))?;
+        let val = t.prompt().map_err(|e| KlockError::ConfigError(e.to_string()))?;
         if val == "now" {
             let now = chrono::Local::now();
             return Ok(format!("{:02}{:02}", now.hour(), now.minute()));

@@ -3,7 +3,7 @@ use colored::Colorize;
 
 use crate::boards::build_board;
 use crate::config::{self, models::Session};
-use crate::error::{JiredError, Result};
+use crate::error::{KlockError, Result};
 use crate::session::{fuzzy_select, prompt_text, prompt_time};
 
 pub async fn handle(
@@ -13,8 +13,8 @@ pub async fn handle(
     end: Option<String>,
 ) -> Result<()> {
     if config::load_session()?.is_some() {
-        return Err(JiredError::SessionError(
-            "Session already active. Run `jired stop` first.".to_string(),
+        return Err(KlockError::SessionError(
+            "Session already active. Run `klock stop` first.".to_string(),
         ));
     }
 
@@ -29,14 +29,14 @@ pub async fn handle(
         .iter()
         .find(|p| p.code.to_uppercase() == code.to_uppercase())
         .ok_or_else(|| {
-            JiredError::NotFound(format!(
-                "Project '{code}' not found. Run `jired add` to link a project."
+            KlockError::NotFound(format!(
+                "Project '{code}' not found. Run `klock add` to link a project."
             ))
         })?;
 
     if project.board_ids.is_empty() {
-        return Err(JiredError::ConfigError(format!(
-            "Project '{code}' has no board linked. Run `jired add` first."
+        return Err(KlockError::ConfigError(format!(
+            "Project '{code}' has no board linked. Run `klock add` first."
         )));
     }
 
@@ -45,7 +45,7 @@ pub async fn handle(
         .boards
         .iter()
         .find(|b| b.id == board_id)
-        .ok_or_else(|| JiredError::ConfigError(format!("Board '{board_id}' not found in config")))?;
+        .ok_or_else(|| KlockError::ConfigError(format!("Board '{board_id}' not found in config")))?;
 
     let board = build_board(board_cfg)?;
 
@@ -57,10 +57,10 @@ pub async fn handle(
     let tasks = board
         .search_tasks(&project.platform_project_id, &query)
         .await
-        .map_err(|e| JiredError::NetworkError(format!("Failed to search tasks: {e}")))?;
+        .map_err(|e| KlockError::NetworkError(format!("Failed to search tasks: {e}")))?;
 
     if tasks.is_empty() {
-        return Err(JiredError::NotFound(format!("No tasks found for '{query}'")));
+        return Err(KlockError::NotFound(format!("No tasks found for '{query}'")));
     }
 
     let selected = fuzzy_select(

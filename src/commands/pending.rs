@@ -3,7 +3,7 @@ use colored::Colorize;
 use crate::cli::PendingAction;
 use crate::clocks::{build_clock, TimeEntry};
 use crate::config;
-use crate::error::{JiredError, Result};
+use crate::error::{KlockError, Result};
 use crate::session::prompt_confirm;
 
 pub async fn handle(action: Option<PendingAction>) -> Result<()> {
@@ -78,10 +78,10 @@ fn edit(
         .entries
         .iter_mut()
         .find(|e| e.idx == idx)
-        .ok_or_else(|| JiredError::NotFound(format!("Pending entry #{idx} not found")))?;
+        .ok_or_else(|| KlockError::NotFound(format!("Pending entry #{idx} not found")))?;
 
     if !entry.pushed_clock_ids.is_empty() {
-        return Err(JiredError::ConfigError(format!(
+        return Err(KlockError::ConfigError(format!(
             "Pending #{idx} has already been partially pushed to {}. Remove it or finish the push instead of editing.",
             entry.pushed_clock_ids.join(", ")
         )));
@@ -110,7 +110,7 @@ fn remove(idx: u32) -> Result<()> {
     let before = store.entries.len();
     store.entries.retain(|e| e.idx != idx);
     if store.entries.len() == before {
-        return Err(JiredError::NotFound(format!(
+        return Err(KlockError::NotFound(format!(
             "Pending entry #{idx} not found"
         )));
     }

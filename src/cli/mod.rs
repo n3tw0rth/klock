@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "jired", version, about = "Track time from Jira/ClickUp boards to Jira Worklog/Clockify")]
+#[command(name = "klock", version, about = "Track time from Jira/ClickUp boards to Jira Worklog/Clockify")]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,

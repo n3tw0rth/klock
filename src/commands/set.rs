@@ -2,13 +2,13 @@ use chrono::NaiveDate;
 use colored::Colorize;
 
 use crate::config;
-use crate::error::{JiredError, Result};
+use crate::error::{KlockError, Result};
 use crate::session::prompt_date;
 
 pub async fn handle(date: Option<String>) -> Result<()> {
     let active_date = match date {
         Some(s) => NaiveDate::parse_from_str(&s, "%Y-%m-%d")
-            .map_err(|_| JiredError::ConfigError(format!("Invalid date '{s}'. Use YYYY-MM-DD.")))?,
+            .map_err(|_| KlockError::ConfigError(format!("Invalid date '{s}'. Use YYYY-MM-DD.")))?,
         None => prompt_date("Date:")?,
     };
 

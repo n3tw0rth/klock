@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub enum JiredError {
+pub enum KlockError {
     #[error("Auth error: {0}")]
     AuthError(String),
     #[error("Config error: {0}")]
@@ -16,4 +16,4 @@ pub enum JiredError {
     NotFound(String),
 }
 
-pub type Result<T> = std::result::Result<T, JiredError>;
+pub type Result<T> = std::result::Result<T, KlockError>;

@@ -52,7 +52,7 @@ async fn login() -> Result<()> {
         let idx = cfg.boards.len() + 1;
         let id = format!("{}-{}", platform_str.to_lowercase(), idx);
 
-        config::store_credential(&format!("jired-{id}"), &email, &api_token)?;
+        config::store_credential(&format!("klock-{id}"), &email, &api_token)?;
         cfg.boards.push(BoardConfig {
             id: id.clone(),
             platform,
@@ -93,7 +93,7 @@ async fn login() -> Result<()> {
         let idx = cfg.clocks.len() + 1;
         let id = format!("{}-{}", platform_str.to_lowercase(), idx);
 
-        config::store_credential(&format!("jired-{id}"), &email, &api_token)?;
+        config::store_credential(&format!("klock-{id}"), &email, &api_token)?;
         cfg.clocks.push(ClockConfig {
             id: id.clone(),
             platform,
@@ -128,7 +128,7 @@ async fn logout() -> Result<()> {
         };
 
         if let Some(board) = cfg.boards.iter().find(|b| b.id == selected) {
-            let _ = config::delete_credential(&format!("jired-{selected}"), &board.email);
+            let _ = config::delete_credential(&format!("klock-{selected}"), &board.email);
         }
         cfg.boards.retain(|b| b.id != selected);
         config::save_config(&cfg)?;
@@ -150,7 +150,7 @@ async fn logout() -> Result<()> {
         };
 
         if let Some(clock) = cfg.clocks.iter().find(|c| c.id == selected) {
-            let _ = config::delete_credential(&format!("jired-{selected}"), &clock.email);
+            let _ = config::delete_credential(&format!("klock-{selected}"), &clock.email);
         }
         cfg.clocks.retain(|c| c.id != selected);
         config::save_config(&cfg)?;

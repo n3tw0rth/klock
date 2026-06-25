@@ -5,7 +5,7 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
 use super::{Clock, TimeEntry};
-use crate::error::{JiredError, Result};
+use crate::error::{KlockError, Result};
 
 pub struct JiraClock {
     base_url: String,
@@ -57,7 +57,7 @@ impl Clock for JiraClock {
             .unwrap_or((9, 0));
 
         let naive = entry.date.and_hms_opt(hour, minute, 0).ok_or_else(|| {
-            JiredError::PlatformError(format!("Invalid time {hour:02}{minute:02}"))
+            KlockError::PlatformError(format!("Invalid time {hour:02}{minute:02}"))
         })?;
 
         let started = chrono::Local
@@ -65,7 +65,7 @@ impl Clock for JiraClock {
             .single()
             .map(|dt| dt.format("%Y-%m-%dT%H:%M:%S.000%z").to_string())
             .ok_or_else(|| {
-                JiredError::PlatformError("Could not localize start datetime".to_string())
+                KlockError::PlatformError("Could not localize start datetime".to_string())
             })?;
 
         let body = WorklogBody {
@@ -90,10 +90,10 @@ impl Clock for JiraClock {
             .json(&body)
             .send()
             .await
-            .map_err(|e| JiredError::NetworkError(e.to_string()))?;
+            .map_err(|e| KlockError::NetworkError(e.to_string()))?;
 
         if !resp.status().is_success() {
-            return Err(JiredError::PlatformError(format!(
+            return Err(KlockError::PlatformError(format!(
                 "Jira worklog failed {}: {}",
                 resp.status(),
                 resp.text().await.unwrap_or_default()
@@ -110,10 +110,10 @@ impl Clock for JiraClock {
             .header("Authorization", &self.auth_header)
             .send()
             .await
-            .map_err(|e| JiredError::NetworkError(e.to_string()))?;
+            .map_err(|e| KlockError::NetworkError(e.to_string()))?;
 
         if !resp.status().is_success() {
-            return Err(JiredError::PlatformError(format!(
+            return Err(KlockError::PlatformError(format!(
                 "Jira worklog GET failed {}",
                 resp.status()
             )));
@@ -122,7 +122,7 @@ impl Clock for JiraClock {
         let page: WorklogPage = resp
             .json()
             .await
-            .map_err(|e| JiredError::NetworkError(e.to_string()))?;
+            .map_err(|e| KlockError::NetworkError(e.to_string()))?;
 
         let total_seconds: i64 = page
             .worklogs

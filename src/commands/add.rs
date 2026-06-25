@@ -5,7 +5,7 @@ use crate::config::{
     self,
     models::{AppConfig, BoardPlatform, ClockConfig, ClockPlatform, ProjectConfig},
 };
-use crate::error::{JiredError, Result};
+use crate::error::{KlockError, Result};
 use crate::session::{fuzzy_select, prompt_select, prompt_text};
 
 const DERIVE_PREFIX: &str = "+ Jira worklog (from board: ";
@@ -15,7 +15,7 @@ fn derive_jira_clock_from_board(cfg: &mut AppConfig, board_id: &str) -> Result<S
         .boards
         .iter()
         .find(|b| b.id == board_id)
-        .ok_or_else(|| JiredError::NotFound(format!("Board '{board_id}' not found")))?
+        .ok_or_else(|| KlockError::NotFound(format!("Board '{board_id}' not found")))?
         .clone();
 
     if let Some(existing) = cfg.clocks.iter().find(|c| {
@@ -33,8 +33,8 @@ fn derive_jira_clock_from_board(cfg: &mut AppConfig, board_id: &str) -> Result<S
         .count();
     let new_id = format!("jira-worklog-{}", jira_clock_count + 1);
 
-    let secret = config::get_credential(&format!("jired-{}", board.id), &board.email)?;
-    config::store_credential(&format!("jired-{new_id}"), &board.email, &secret)?;
+    let secret = config::get_credential(&format!("klock-{}", board.id), &board.email)?;
+    config::store_credential(&format!("klock-{new_id}"), &board.email, &secret)?;
 
     cfg.clocks.push(ClockConfig {
         id: new_id.clone(),
@@ -61,8 +61,8 @@ pub async fn handle(project_code: Option<String>, search_string: Option<String>)
 
     if kind == "Board" {
         if cfg.boards.is_empty() {
-            return Err(JiredError::ConfigError(
-                "No board integrations. Run `jired auth login` first.".to_string(),
+            return Err(KlockError::ConfigError(
+                "No board integrations. Run `klock auth login` first.".to_string(),
             ));
         }
         let board_ids: Vec<String> = cfg.boards.iter().map(|b| b.id.clone()).collect();
@@ -82,11 +82,11 @@ pub async fn handle(project_code: Option<String>, search_string: Option<String>)
         };
 
         let projects = board.search_projects(&query).await.map_err(|e| {
-            JiredError::NetworkError(format!("Failed to search projects: {e}"))
+            KlockError::NetworkError(format!("Failed to search projects: {e}"))
         })?;
 
         if projects.is_empty() {
-            return Err(JiredError::NotFound(format!("No projects found for '{query}'")));
+            return Err(KlockError::NotFound(format!("No projects found for '{query}'")));
         }
 
         let selected = fuzzy_select(
@@ -147,8 +147,8 @@ pub async fn handle(project_code: Option<String>, search_string: Option<String>)
         options.extend(cfg.clocks.iter().map(|c| c.id.clone()));
 
         if options.is_empty() {
-            return Err(JiredError::ConfigError(
-                "No clock integrations. Run `jired auth login` first.".to_string(),
+            return Err(KlockError::ConfigError(
+                "No clock integrations. Run `klock auth login` first.".to_string(),
             ));
         }
 

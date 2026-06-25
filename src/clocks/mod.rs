@@ -31,7 +31,7 @@ pub trait Clock: Send + Sync {
 
 pub fn build_clock(config: &ClockConfig) -> Result<Box<dyn Clock>> {
     use crate::config::get_credential;
-    let service = format!("jired-{}", config.id);
+    let service = format!("klock-{}", config.id);
     let token = get_credential(&service, &config.email)?;
     match config.platform {
         ClockPlatform::Jira => Ok(Box::new(jira::JiraClock::new(

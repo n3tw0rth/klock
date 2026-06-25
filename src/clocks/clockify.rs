@@ -4,7 +4,7 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
 use super::{Clock, TimeEntry};
-use crate::error::{JiredError, Result};
+use crate::error::{KlockError, Result};
 
 pub struct ClockifyClock {
     api_key: String,
@@ -26,7 +26,7 @@ impl ClockifyClock {
             .header("X-Api-Key", &self.api_key)
             .send()
             .await
-            .map_err(|e| JiredError::NetworkError(e.to_string()))?;
+            .map_err(|e| KlockError::NetworkError(e.to_string()))?;
 
         #[derive(Deserialize)]
         struct Workspace {
@@ -36,13 +36,13 @@ impl ClockifyClock {
         let workspaces: Vec<Workspace> = resp
             .json()
             .await
-            .map_err(|e| JiredError::NetworkError(e.to_string()))?;
+            .map_err(|e| KlockError::NetworkError(e.to_string()))?;
 
         workspaces
             .into_iter()
             .next()
             .map(|w| w.id)
-            .ok_or_else(|| JiredError::PlatformError("No Clockify workspaces found".to_string()))
+            .ok_or_else(|| KlockError::PlatformError("No Clockify workspaces found".to_string()))
     }
 
     async fn find_project_id_by_name(
@@ -60,10 +60,10 @@ impl ClockifyClock {
             .header("X-Api-Key", &self.api_key)
             .send()
             .await
-            .map_err(|e| JiredError::NetworkError(e.to_string()))?;
+            .map_err(|e| KlockError::NetworkError(e.to_string()))?;
 
         if !resp.status().is_success() {
-            return Err(JiredError::PlatformError(format!(
+            return Err(KlockError::PlatformError(format!(
                 "Clockify project lookup failed {}",
                 resp.status()
             )));
@@ -78,7 +78,7 @@ impl ClockifyClock {
         let projects: Vec<ClockifyProject> = resp
             .json()
             .await
-            .map_err(|e| JiredError::NetworkError(e.to_string()))?;
+            .map_err(|e| KlockError::NetworkError(e.to_string()))?;
 
         Ok(projects
             .into_iter()
@@ -93,7 +93,7 @@ impl ClockifyClock {
             .header("X-Api-Key", &self.api_key)
             .send()
             .await
-            .map_err(|e| JiredError::NetworkError(e.to_string()))?;
+            .map_err(|e| KlockError::NetworkError(e.to_string()))?;
 
         #[derive(Deserialize)]
         struct User {
@@ -103,7 +103,7 @@ impl ClockifyClock {
         let user: User = resp
             .json()
             .await
-            .map_err(|e| JiredError::NetworkError(e.to_string()))?;
+            .map_err(|e| KlockError::NetworkError(e.to_string()))?;
 
         Ok(user.id)
     }
@@ -208,10 +208,10 @@ impl Clock for ClockifyClock {
             .json(&body)
             .send()
             .await
-            .map_err(|e| JiredError::NetworkError(e.to_string()))?;
+            .map_err(|e| KlockError::NetworkError(e.to_string()))?;
 
         if !resp.status().is_success() {
-            return Err(JiredError::PlatformError(format!(
+            return Err(KlockError::PlatformError(format!(
                 "Clockify returned {}: {}",
                 resp.status(),
                 resp.text().await.unwrap_or_default()
@@ -237,10 +237,10 @@ impl Clock for ClockifyClock {
             .header("X-Api-Key", &self.api_key)
             .send()
             .await
-            .map_err(|e| JiredError::NetworkError(e.to_string()))?;
+            .map_err(|e| KlockError::NetworkError(e.to_string()))?;
 
         if !resp.status().is_success() {
-            return Err(JiredError::PlatformError(format!(
+            return Err(KlockError::PlatformError(format!(
                 "Clockify GET failed {}",
                 resp.status()
             )));
@@ -260,7 +260,7 @@ impl Clock for ClockifyClock {
         let entries: Vec<ClockifyEntry> = resp
             .json()
             .await
-            .map_err(|e| JiredError::NetworkError(e.to_string()))?;
+            .map_err(|e| KlockError::NetworkError(e.to_string()))?;
 
         let total_hours: f32 = entries
             .iter()

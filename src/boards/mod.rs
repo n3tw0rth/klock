@@ -31,7 +31,7 @@ pub trait Board: Send + Sync {
 
 pub fn build_board(config: &BoardConfig) -> Result<Box<dyn Board>> {
     use crate::config::{get_credential};
-    let service = format!("jired-{}", config.id);
+    let service = format!("klock-{}", config.id);
     let token = get_credential(&service, &config.email)?;
     match config.platform {
         BoardPlatform::Jira => Ok(Box::new(jira::JiraBoard::new(
@@ -41,8 +41,8 @@ pub fn build_board(config: &BoardConfig) -> Result<Box<dyn Board>> {
         ))),
         BoardPlatform::ClickUp => {
             let team_id = config.team_id.clone().ok_or_else(|| {
-                crate::error::JiredError::ConfigError(
-                    "ClickUp board is missing team_id. Run `jired auth login` to reconfigure.".to_string(),
+                crate::error::KlockError::ConfigError(
+                    "ClickUp board is missing team_id. Run `klock auth login` to reconfigure.".to_string(),
                 )
             })?;
             Ok(Box::new(clickup::ClickUpBoard::new(token, team_id)))

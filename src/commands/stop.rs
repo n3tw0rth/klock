@@ -2,12 +2,12 @@ use colored::Colorize;
 
 use crate::config;
 use crate::config::models::PendingEntry;
-use crate::error::{JiredError, Result};
+use crate::error::{KlockError, Result};
 use crate::session::prompt_time;
 
 pub async fn handle(at: Option<String>) -> Result<()> {
     let session = config::load_session()?.ok_or_else(|| {
-        JiredError::SessionError("No active session. Run `jired start` first.".to_string())
+        KlockError::SessionError("No active session. Run `klock start` first.".to_string())
     })?;
 
     let stop_time = match at {
@@ -23,19 +23,19 @@ pub async fn handle(at: Option<String>) -> Result<()> {
         .iter()
         .find(|p| p.code == session.project_code)
         .ok_or_else(|| {
-            JiredError::NotFound(format!("Project '{}' not found in config", session.project_code))
+            KlockError::NotFound(format!("Project '{}' not found in config", session.project_code))
         })?;
 
     if project.clock_ids.is_empty() {
-        return Err(JiredError::ConfigError(format!(
-            "Project '{}' has no clocks linked. Run `jired add` to link a clock.",
+        return Err(KlockError::ConfigError(format!(
+            "Project '{}' has no clocks linked. Run `klock add` to link a clock.",
             session.project_code
         )));
     }
 
     for clock_id in &project.clock_ids {
         if !cfg.clocks.iter().any(|c| &c.id == clock_id) {
-            return Err(JiredError::ConfigError(format!(
+            return Err(KlockError::ConfigError(format!(
                 "Clock '{clock_id}' not found in config"
             )));
         }
@@ -63,7 +63,7 @@ pub async fn handle(at: Option<String>) -> Result<()> {
 
     config::clear_session()?;
     println!(
-        "{} Queued #{} — {:.2}h for [{}] → {} (run `jired pending push`)",
+        "{} Queued #{} — {:.2}h for [{}] → {} (run `klock pending push`)",
         "■".blue(),
         idx,
         hours,
@@ -90,23 +90,23 @@ fn compute_hours(session: &crate::config::models::Session, stop_time: &str) -> R
 
 fn parse_hhmm_diff(start: &str, stop: &str) -> Result<f32> {
     let start_h: u32 = start.get(0..2).and_then(|h| h.parse().ok()).ok_or_else(|| {
-        JiredError::SessionError(format!("Invalid start time '{start}'."))
+        KlockError::SessionError(format!("Invalid start time '{start}'."))
     })?;
     let start_m: u32 = start.get(2..4).and_then(|m| m.parse().ok()).ok_or_else(|| {
-        JiredError::SessionError(format!("Invalid start time '{start}'."))
+        KlockError::SessionError(format!("Invalid start time '{start}'."))
     })?;
     let stop_h: u32 = stop.get(0..2).and_then(|h| h.parse().ok()).ok_or_else(|| {
-        JiredError::SessionError(format!("Invalid stop time '{stop}'."))
+        KlockError::SessionError(format!("Invalid stop time '{stop}'."))
     })?;
     let stop_m: u32 = stop.get(2..4).and_then(|m| m.parse().ok()).ok_or_else(|| {
-        JiredError::SessionError(format!("Invalid stop time '{stop}'."))
+        KlockError::SessionError(format!("Invalid stop time '{stop}'."))
     })?;
 
     let start_mins = (start_h * 60 + start_m) as i32;
     let stop_mins = (stop_h * 60 + stop_m) as i32;
 
     if stop_mins <= start_mins {
-        return Err(JiredError::SessionError(
+        return Err(KlockError::SessionError(
             "Stop time must be after start time.".to_string(),
         ));
     }
