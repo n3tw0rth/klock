@@ -36,6 +36,7 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
         Commands::Stop { at } => commands::stop::handle(at).await?,
         Commands::Set { date } => commands::set::handle(date).await?,
         Commands::Log { summary } => commands::log::handle(summary).await?,
+        Commands::Pending { action } => commands::pending::handle(action).await?,
     }
     Ok(())
 }

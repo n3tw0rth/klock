@@ -1,7 +1,7 @@
 use colored::Colorize;
 
-use crate::clocks::{build_clock, TimeEntry};
 use crate::config;
+use crate::config::models::PendingEntry;
 use crate::error::{JiredError, Result};
 use crate::session::prompt_time;
 
@@ -34,43 +34,41 @@ pub async fn handle(at: Option<String>) -> Result<()> {
     }
 
     for clock_id in &project.clock_ids {
-        let clock_cfg = cfg
-            .clocks
-            .iter()
-            .find(|c| &c.id == clock_id)
-            .ok_or_else(|| {
-                JiredError::ConfigError(format!("Clock '{clock_id}' not found in config"))
-            })?;
-
-        let clock = build_clock(clock_cfg)?;
-
-        let entry = TimeEntry {
-            task_id: session.task_id.clone(),
-            hours,
-            description: session.task_title.clone(),
-            date: session.active_date,
-            start_time: session.start_time_override.clone(),
-            end_time: Some(stop_time.clone()),
-        };
-
-        clock.log_time(&entry).await.map_err(|e| {
-            JiredError::NetworkError(format!("Failed to log to '{clock_id}': {e}"))
-        })?;
-
-        println!(
-            "{} Logged {:.2}h to {}",
-            "✓".green(),
-            hours,
-            clock_id.bold()
-        );
+        if !cfg.clocks.iter().any(|c| &c.id == clock_id) {
+            return Err(JiredError::ConfigError(format!(
+                "Clock '{clock_id}' not found in config"
+            )));
+        }
     }
+
+    let entry = PendingEntry {
+        idx: 0,
+        clock_ids: project.clock_ids.clone(),
+        pushed_clock_ids: Vec::new(),
+        clock_id: None,
+        project_code: project.code.clone(),
+        platform_project_name: project.platform_project_name.clone(),
+        task_id: session.task_id.clone(),
+        task_key: session.task_key.clone(),
+        task_title: session.task_title.clone(),
+        description: session.task_title.clone(),
+        date: session.active_date,
+        start_time: session.start_time_override.clone(),
+        end_time: Some(stop_time.clone()),
+        hours,
+    };
+
+    let clocks_summary = project.clock_ids.join(", ");
+    let idx = config::append_pending(entry)?;
 
     config::clear_session()?;
     println!(
-        "{} Session ended — {:.2}h logged for [{}]",
+        "{} Queued #{} — {:.2}h for [{}] → {} (run `jired pending push`)",
         "■".blue(),
+        idx,
         hours,
-        session.task_title
+        session.task_title,
+        clocks_summary.bold()
     );
 
     Ok(())

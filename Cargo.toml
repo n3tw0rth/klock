@@ -1,10 +1,10 @@
 [package]
-name = "jired"
+name = "klock"
 version = "0.1.0"
 edition = "2021"
 
 [[bin]]
-name = "jired"
+name = "klock"
 path = "src/main.rs"
 
 [dependencies]

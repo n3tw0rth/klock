@@ -45,6 +45,47 @@ impl ClockifyClock {
             .ok_or_else(|| JiredError::PlatformError("No Clockify workspaces found".to_string()))
     }
 
+    async fn find_project_id_by_name(
+        &self,
+        workspace_id: &str,
+        name: &str,
+    ) -> Result<Option<String>> {
+        let url = format!(
+            "https://api.clockify.me/api/v1/workspaces/{workspace_id}/projects?name={}&page-size=50",
+            urlencode(name)
+        );
+        let resp = self
+            .client
+            .get(&url)
+            .header("X-Api-Key", &self.api_key)
+            .send()
+            .await
+            .map_err(|e| JiredError::NetworkError(e.to_string()))?;
+
+        if !resp.status().is_success() {
+            return Err(JiredError::PlatformError(format!(
+                "Clockify project lookup failed {}",
+                resp.status()
+            )));
+        }
+
+        #[derive(Deserialize)]
+        struct ClockifyProject {
+            id: String,
+            name: String,
+        }
+
+        let projects: Vec<ClockifyProject> = resp
+            .json()
+            .await
+            .map_err(|e| JiredError::NetworkError(e.to_string()))?;
+
+        Ok(projects
+            .into_iter()
+            .find(|p| p.name.eq_ignore_ascii_case(name))
+            .map(|p| p.id))
+    }
+
     async fn get_user_id(&self) -> Result<String> {
         let resp = self
             .client
@@ -73,8 +114,23 @@ struct ClockifyTimeEntry {
     start: String,
     end: String,
     description: String,
-    #[serde(rename = "taskId")]
+    #[serde(rename = "projectId", skip_serializing_if = "Option::is_none")]
+    project_id: Option<String>,
+    #[serde(rename = "taskId", skip_serializing_if = "Option::is_none")]
     task_id: Option<String>,
+}
+
+fn urlencode(s: &str) -> String {
+    s.bytes()
+        .flat_map(|b| {
+            let encoded: Vec<u8> = match b {
+                b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => vec![b],
+                _ => format!("%{b:02X}").into_bytes(),
+            };
+            encoded
+        })
+        .map(|b| b as char)
+        .collect()
 }
 
 #[async_trait]
@@ -120,10 +176,25 @@ impl Clock for ClockifyClock {
             end_m
         );
 
+        let description = match entry.issue_key.as_deref() {
+            Some(key) if !entry.description.starts_with(&format!("[{key}]")) => {
+                format!("[{key}] {}", entry.description)
+            }
+            _ => entry.description.clone(),
+        };
+
+        let project_id = match entry.project_name.as_deref() {
+            Some(name) if !name.is_empty() => {
+                self.find_project_id_by_name(&workspace_id, name).await?
+            }
+            _ => None,
+        };
+
         let body = ClockifyTimeEntry {
             start,
             end,
-            description: entry.description.clone(),
+            description,
+            project_id,
             task_id: None,
         };
 

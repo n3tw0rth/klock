@@ -51,6 +51,44 @@ pub enum Commands {
         #[arg(long)]
         summary: bool,
     },
+    /// Manage pending Clockify entries queued by `stop`
+    Pending {
+        #[command(subcommand)]
+        action: Option<PendingAction>,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum PendingAction {
+    /// List pending entries (default if no action)
+    List,
+    /// Edit a pending entry by its index
+    Edit {
+        /// Pending entry index (see `pending list`)
+        idx: u32,
+        /// Override hours (decimal)
+        #[arg(long)]
+        hours: Option<f32>,
+        /// Override start time (HHMM)
+        #[arg(long)]
+        start: Option<String>,
+        /// Override end time (HHMM)
+        #[arg(long)]
+        end: Option<String>,
+        /// Override description (the [KEY] prefix is added on push)
+        #[arg(long)]
+        description: Option<String>,
+    },
+    /// Remove a pending entry by its index
+    Remove {
+        idx: u32,
+    },
+    /// Push all pending entries to Clockify
+    Push {
+        /// Skip confirmation prompt
+        #[arg(long, short)]
+        yes: bool,
+    },
 }
 
 #[derive(Subcommand)]

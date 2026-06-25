@@ -11,6 +11,10 @@ use crate::error::Result;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimeEntry {
     pub task_id: String,
+    #[serde(default)]
+    pub issue_key: Option<String>,
+    #[serde(default)]
+    pub project_name: Option<String>,
     pub hours: f32,
     pub description: String,
     pub date: NaiveDate,

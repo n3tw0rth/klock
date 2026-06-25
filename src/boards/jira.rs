@@ -104,11 +104,12 @@ impl Board for JiraBoard {
     }
 
     async fn search_tasks(&self, project_id: &str, query: &str) -> Result<Vec<RemoteTask>> {
-        let jql = format!("project={project_id}+AND+text~\"{query}\"");
-        let url = format!("{}/rest/api/3/search?jql={jql}", self.base_url);
+        let jql = format!("project={project_id} AND text~\"{query}\"");
+        let url = format!("{}/rest/api/3/search/jql", self.base_url);
         let resp = self
             .client
             .get(&url)
+            .query(&[("jql", jql.as_str()), ("fields", "summary,status,assignee")])
             .header("Authorization", &self.auth_header)
             .header("Accept", "application/json")
             .send()

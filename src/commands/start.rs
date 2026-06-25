@@ -96,6 +96,7 @@ pub async fn handle(
     let session = Session {
         project_code: code.clone(),
         task_id: selected.id.clone(),
+        task_key: Some(selected.key.clone()),
         task_title: selected.title.clone(),
         board_id,
         started_at: Local::now(),
