@@ -1,50 +1,13 @@
 use colored::Colorize;
 
 use crate::boards::build_board;
-use crate::config::{
-    self,
-    models::{AppConfig, BoardPlatform, ClockConfig, ClockPlatform, ProjectConfig},
-};
+use crate::config;
 use crate::error::{KlockError, Result};
+use crate::services::projects::{
+    clock_options_for, derive_jira_clock_from_board, link_board_to_project,
+    link_clock_to_project, ClockOption,
+};
 use crate::session::{fuzzy_select, prompt_select, prompt_text};
-
-const DERIVE_PREFIX: &str = "+ Jira worklog (from board: ";
-
-fn derive_jira_clock_from_board(cfg: &mut AppConfig, board_id: &str) -> Result<String> {
-    let board = cfg
-        .boards
-        .iter()
-        .find(|b| b.id == board_id)
-        .ok_or_else(|| KlockError::NotFound(format!("Board '{board_id}' not found")))?
-        .clone();
-
-    if let Some(existing) = cfg.clocks.iter().find(|c| {
-        c.platform == ClockPlatform::Jira
-            && c.base_url == board.base_url
-            && c.email == board.email
-    }) {
-        return Ok(existing.id.clone());
-    }
-
-    let jira_clock_count = cfg
-        .clocks
-        .iter()
-        .filter(|c| c.platform == ClockPlatform::Jira)
-        .count();
-    let new_id = format!("jira-worklog-{}", jira_clock_count + 1);
-
-    let secret = config::get_credential(&format!("klock-{}", board.id), &board.email)?;
-    config::store_credential(&format!("klock-{new_id}"), &board.email, &secret)?;
-
-    cfg.clocks.push(ClockConfig {
-        id: new_id.clone(),
-        platform: ClockPlatform::Jira,
-        base_url: board.base_url.clone(),
-        email: board.email.clone(),
-    });
-
-    Ok(new_id)
-}
 
 pub async fn handle(project_code: Option<String>, search_string: Option<String>) -> Result<()> {
     let code = match project_code {
@@ -81,9 +44,10 @@ pub async fn handle(project_code: Option<String>, search_string: Option<String>)
             None => prompt_text("Search projects:", None)?,
         };
 
-        let projects = board.search_projects(&query).await.map_err(|e| {
-            KlockError::NetworkError(format!("Failed to search projects: {e}"))
-        })?;
+        let projects = board
+            .search_projects(&query)
+            .await
+            .map_err(|e| KlockError::NetworkError(format!("Failed to search projects: {e}")))?;
 
         if projects.is_empty() {
             return Err(KlockError::NotFound(format!("No projects found for '{query}'")));
@@ -95,23 +59,13 @@ pub async fn handle(project_code: Option<String>, search_string: Option<String>)
             "Select project:",
         )?;
 
-        if let Some(proj) = cfg.projects.iter_mut().find(|p| p.code == code) {
-            if !proj.board_ids.contains(&selected_id) {
-                proj.board_ids.push(selected_id.clone());
-            }
-            proj.platform_project_id = selected.id.clone();
-            proj.platform_project_name = selected.name.clone();
-        } else {
-            cfg.projects.push(ProjectConfig {
-                code: code.clone(),
-                board_ids: vec![selected_id.clone()],
-                clock_ids: vec![],
-                platform_project_id: selected.id.clone(),
-                platform_project_name: selected.name.clone(),
-            });
-        }
-
-        config::save_config(&cfg)?;
+        link_board_to_project(
+            &mut cfg,
+            &code,
+            &selected_id,
+            selected.id.clone(),
+            selected.name.clone(),
+        )?;
         println!(
             "{} Added {} → project {}",
             "✓".green(),
@@ -119,70 +73,41 @@ pub async fn handle(project_code: Option<String>, search_string: Option<String>)
             code.bold()
         );
     } else {
-        let derive_options: Vec<String> = cfg
-            .projects
-            .iter()
-            .find(|p| p.code == code)
-            .map(|proj| {
-                proj.board_ids
-                    .iter()
-                    .filter_map(|bid| {
-                        cfg.boards
-                            .iter()
-                            .find(|b| &b.id == bid && b.platform == BoardPlatform::Jira)
-                    })
-                    .filter(|board| {
-                        !cfg.clocks.iter().any(|c| {
-                            c.platform == ClockPlatform::Jira
-                                && c.base_url == board.base_url
-                                && c.email == board.email
-                        })
-                    })
-                    .map(|b| format!("{DERIVE_PREFIX}{})", b.id))
-                    .collect()
-            })
-            .unwrap_or_default();
-
-        let mut options = derive_options;
-        options.extend(cfg.clocks.iter().map(|c| c.id.clone()));
-
+        let options = clock_options_for(&cfg, &code);
         if options.is_empty() {
             return Err(KlockError::ConfigError(
                 "No clock integrations. Run `klock auth login` first.".to_string(),
             ));
         }
 
-        let selection = prompt_select("Select clock integration:", options)?;
+        let labels: Vec<String> = options
+            .iter()
+            .map(|opt| match opt {
+                ClockOption::Existing(id) => id.clone(),
+                ClockOption::Derive { board_id } => {
+                    format!("+ Jira worklog (from board: {board_id})")
+                }
+            })
+            .collect();
 
-        let selected_id = if let Some(rest) = selection.strip_prefix(DERIVE_PREFIX) {
-            let board_id = rest.trim_end_matches(')').to_string();
-            let new_id = derive_jira_clock_from_board(&mut cfg, &board_id)?;
-            println!(
-                "{} Created Jira worklog clock '{}' reusing credentials from board '{}'",
-                "✓".green(),
-                new_id.bold(),
-                board_id
-            );
-            new_id
-        } else {
-            selection
+        let picked_label = prompt_select("Select clock integration:", labels.clone())?;
+        let picked_idx = labels.iter().position(|l| l == &picked_label).unwrap();
+
+        let selected_id = match &options[picked_idx] {
+            ClockOption::Existing(id) => id.clone(),
+            ClockOption::Derive { board_id } => {
+                let new_id = derive_jira_clock_from_board(&mut cfg, board_id)?;
+                println!(
+                    "{} Created Jira worklog clock '{}' reusing credentials from board '{}'",
+                    "✓".green(),
+                    new_id.bold(),
+                    board_id
+                );
+                new_id
+            }
         };
 
-        if let Some(proj) = cfg.projects.iter_mut().find(|p| p.code == code) {
-            if !proj.clock_ids.contains(&selected_id) {
-                proj.clock_ids.push(selected_id.clone());
-            }
-        } else {
-            cfg.projects.push(ProjectConfig {
-                code: code.clone(),
-                board_ids: vec![],
-                clock_ids: vec![selected_id.clone()],
-                platform_project_id: String::new(),
-                platform_project_name: String::new(),
-            });
-        }
-
-        config::save_config(&cfg)?;
+        link_clock_to_project(&mut cfg, &code, &selected_id)?;
         println!(
             "{} Linked clock '{}' → project {}",
             "✓".green(),

@@ -1,8 +1,8 @@
 use chrono::NaiveDate;
 use colored::Colorize;
 
-use crate::config;
 use crate::error::{KlockError, Result};
+use crate::services::sessions::set_active_date;
 use crate::session::prompt_date;
 
 pub async fn handle(date: Option<String>) -> Result<()> {
@@ -12,12 +12,7 @@ pub async fn handle(date: Option<String>) -> Result<()> {
         None => prompt_date("Date:")?,
     };
 
-    if let Some(mut session) = config::load_session()? {
-        session.active_date = active_date;
-        config::save_session(&session)?;
-    }
-
-    config::save_active_date(active_date)?;
+    set_active_date(active_date)?;
     println!(
         "{} Active date set to {}",
         "✓".green(),

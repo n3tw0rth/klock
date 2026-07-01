@@ -1,9 +1,12 @@
-use chrono::Local;
 use colored::Colorize;
+use inquire::Text;
 
-use crate::boards::{build_board, RemoteTask};
-use crate::config::{self, models::Session};
+use crate::config;
 use crate::error::{KlockError, Result};
+use crate::services::sessions::{
+    build_session, ensure_no_active_session, first_board_for_project, perform_search_tasks,
+    resolve_project,
+};
 use crate::session::{fuzzy_select, prompt_select, prompt_text, prompt_time};
 
 pub async fn handle(
@@ -12,11 +15,7 @@ pub async fn handle(
     start: Option<String>,
     end: Option<String>,
 ) -> Result<()> {
-    if config::load_session()?.is_some() {
-        return Err(KlockError::SessionError(
-            "Session already active. Run `klock stop` first.".to_string(),
-        ));
-    }
+    ensure_no_active_session()?;
 
     let cfg = config::load_config()?;
 
@@ -44,57 +43,28 @@ pub async fn handle(
         }
     };
 
-    let project = cfg
-        .projects
-        .iter()
-        .find(|p| p.code.to_uppercase() == code.to_uppercase())
-        .ok_or_else(|| {
-            KlockError::NotFound(format!(
-                "Project '{code}' not found. Run `klock add` to link a project."
-            ))
-        })?;
-
-    if project.board_ids.is_empty() {
-        return Err(KlockError::ConfigError(format!(
-            "Project '{code}' has no board linked. Run `klock add` first."
-        )));
-    }
-
-    let board_id = project.board_ids[0].clone();
-    let board_cfg = cfg
-        .boards
-        .iter()
-        .find(|b| b.id == board_id)
-        .ok_or_else(|| KlockError::ConfigError(format!("Board '{board_id}' not found in config")))?;
-
-    let board = build_board(board_cfg)?;
+    let project = resolve_project(&cfg, &code)?.clone();
+    let board_id = first_board_for_project(&cfg, &project)?.id.clone();
 
     let query = match search_string {
         Some(s) => s,
         None => prompt_text("Search tasks:", None)?,
     };
 
-    let tasks = board
-        .search_tasks(&project.platform_project_id, &query)
-        .await
-        .map_err(|e| KlockError::NetworkError(format!("Failed to search tasks: {e}")))?;
-
+    let tasks = perform_search_tasks(&cfg, &project, &query).await?;
     if tasks.is_empty() {
         return Err(KlockError::NotFound(format!("No tasks found for '{query}'")));
     }
 
     let selected = fuzzy_select(
         tasks,
-        |t: &RemoteTask| format!("[{}] {} ({})", t.key, t.title, t.status),
+        |t| format!("[{}] {} ({})", t.key, t.title, t.status),
         "Select task:",
     )?;
 
     let start_time = match start {
         Some(s) => Some(s),
-        None => {
-            let t = prompt_time("Start time (HHMM or 'now'):", Some("now"))?;
-            Some(t)
-        }
+        None => Some(prompt_time("Start time (HHMM or 'now'):", Some("now"))?),
     };
 
     let end_time = match end {
@@ -112,31 +82,26 @@ pub async fn handle(
     };
 
     let active_date = config::load_active_date()?;
-
-    let session = Session {
-        project_code: code.clone(),
-        task_id: selected.id.clone(),
-        task_key: Some(selected.key.clone()),
-        task_title: selected.title.clone(),
+    let task_key = selected.key.clone();
+    let task_title = selected.title.clone();
+    let session = build_session(
+        &project,
         board_id,
-        started_at: Local::now(),
-        start_time_override: start_time.clone(),
-        end_time_override: end_time,
+        selected,
+        start_time.clone(),
+        end_time,
         active_date,
-    };
-
+    );
     config::save_session(&session)?;
 
     let time_display = start_time.as_deref().unwrap_or("now");
     println!(
         "{} Started [{}] {} — {}",
         "▶".green(),
-        selected.key.bold(),
-        selected.title,
+        task_key.bold(),
+        task_title,
         time_display.yellow()
     );
 
     Ok(())
 }
-
-use inquire::Text;

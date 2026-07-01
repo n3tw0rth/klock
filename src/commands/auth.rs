@@ -1,8 +1,15 @@
 use colored::Colorize;
 
 use crate::cli::AuthAction;
-use crate::config::{self, models::{BoardConfig, BoardPlatform, ClockConfig, ClockPlatform}};
+use crate::config::{
+    self,
+    models::{BoardPlatform, ClockPlatform},
+};
 use crate::error::Result;
+use crate::services::auth::{
+    duplicate_board_exists, duplicate_clock_exists, login_board, login_clock, logout_board,
+    logout_clock, BoardDraft, ClockDraft,
+};
 use crate::session::{prompt_confirm, prompt_password, prompt_select, prompt_text};
 
 pub async fn handle(action: AuthAction) -> Result<()> {
@@ -38,29 +45,21 @@ async fn login() -> Result<()> {
         let email = prompt_text("Email:", None)?;
         let api_token = prompt_password("API Token:")?;
 
-        if cfg.boards.iter().any(|b| {
-            b.platform == platform && b.base_url == base_url && b.email == email
-        }) {
-            let cont = prompt_confirm(
-                "An integration with this platform/URL/email already exists. Add another?",
-            )?;
-            if !cont {
-                return Ok(());
-            }
-        }
-
-        let idx = cfg.boards.len() + 1;
-        let id = format!("{}-{}", platform_str.to_lowercase(), idx);
-
-        config::store_credential(&format!("klock-{id}"), &email, &api_token)?;
-        cfg.boards.push(BoardConfig {
-            id: id.clone(),
+        let draft = BoardDraft {
             platform,
             base_url,
             email,
             team_id,
-        });
-        config::save_config(&cfg)?;
+        };
+        if duplicate_board_exists(&cfg, &draft)
+            && !prompt_confirm(
+                "An integration with this platform/URL/email already exists. Add another?",
+            )?
+        {
+            return Ok(());
+        }
+
+        let id = login_board(&mut cfg, draft, &api_token)?;
         println!("{} Board integration '{}' saved.", "✓".green(), id);
     } else {
         let platform_str =
@@ -71,7 +70,7 @@ async fn login() -> Result<()> {
             ClockPlatform::Clockify
         };
 
-        let base_url = if platform_str == "Clockify" {
+        let base_url = if platform == ClockPlatform::Clockify {
             "https://api.clockify.me".to_string()
         } else {
             prompt_text("Base URL (e.g. https://org.atlassian.net):", None)?
@@ -79,28 +78,20 @@ async fn login() -> Result<()> {
         let email = prompt_text("Email:", None)?;
         let api_token = prompt_password("API Key / Token:")?;
 
-        if cfg.clocks.iter().any(|c| {
-            c.platform == platform && c.base_url == base_url && c.email == email
-        }) {
-            let cont = prompt_confirm(
-                "An integration with this platform/URL/email already exists. Add another?",
-            )?;
-            if !cont {
-                return Ok(());
-            }
-        }
-
-        let idx = cfg.clocks.len() + 1;
-        let id = format!("{}-{}", platform_str.to_lowercase(), idx);
-
-        config::store_credential(&format!("klock-{id}"), &email, &api_token)?;
-        cfg.clocks.push(ClockConfig {
-            id: id.clone(),
+        let draft = ClockDraft {
             platform,
             base_url,
             email,
-        });
-        config::save_config(&cfg)?;
+        };
+        if duplicate_clock_exists(&cfg, &draft)
+            && !prompt_confirm(
+                "An integration with this platform/URL/email already exists. Add another?",
+            )?
+        {
+            return Ok(());
+        }
+
+        let id = login_clock(&mut cfg, draft, &api_token)?;
         println!("{} Clock integration '{}' saved.", "✓".green(), id);
     }
 
@@ -118,20 +109,14 @@ async fn logout() -> Result<()> {
         }
         let ids: Vec<String> = cfg.boards.iter().map(|b| b.id.clone()).collect();
         let selected = if ids.len() == 1 {
-            let confirmed = prompt_confirm(&format!("Logout from '{}'?", ids[0]))?;
-            if !confirmed {
+            if !prompt_confirm(&format!("Logout from '{}'?", ids[0]))? {
                 return Ok(());
             }
             ids[0].clone()
         } else {
             prompt_select("Select integration to remove:", ids)?
         };
-
-        if let Some(board) = cfg.boards.iter().find(|b| b.id == selected) {
-            let _ = config::delete_credential(&format!("klock-{selected}"), &board.email);
-        }
-        cfg.boards.retain(|b| b.id != selected);
-        config::save_config(&cfg)?;
+        logout_board(&mut cfg, &selected)?;
         println!("{} Logged out from '{}'.", "✓".green(), selected);
     } else {
         if cfg.clocks.is_empty() {
@@ -140,20 +125,14 @@ async fn logout() -> Result<()> {
         }
         let ids: Vec<String> = cfg.clocks.iter().map(|c| c.id.clone()).collect();
         let selected = if ids.len() == 1 {
-            let confirmed = prompt_confirm(&format!("Logout from '{}'?", ids[0]))?;
-            if !confirmed {
+            if !prompt_confirm(&format!("Logout from '{}'?", ids[0]))? {
                 return Ok(());
             }
             ids[0].clone()
         } else {
             prompt_select("Select integration to remove:", ids)?
         };
-
-        if let Some(clock) = cfg.clocks.iter().find(|c| c.id == selected) {
-            let _ = config::delete_credential(&format!("klock-{selected}"), &clock.email);
-        }
-        cfg.clocks.retain(|c| c.id != selected);
-        config::save_config(&cfg)?;
+        logout_clock(&mut cfg, &selected)?;
         println!("{} Logged out from '{}'.", "✓".green(), selected);
     }
 

@@ -4,7 +4,10 @@ mod clocks;
 mod commands;
 mod config;
 mod error;
+mod services;
 mod session;
+mod tui;
+mod utils;
 
 use clap::Parser;
 use cli::{Cli, Commands};
@@ -22,22 +25,25 @@ async fn main() {
 
 async fn run(cli: Cli) -> anyhow::Result<()> {
     match cli.command {
-        Commands::Auth { action } => commands::auth::handle(action).await?,
-        Commands::Add {
+        None => tui::run().await?,
+        Some(Commands::Auth { action }) => commands::auth::handle(action).await?,
+        Some(Commands::Add {
             project_code,
             search_string,
-        } => commands::add::handle(project_code, search_string).await?,
-        Commands::Remove { project_code } => commands::remove::handle(project_code).await?,
-        Commands::Start {
+        }) => commands::add::handle(project_code, search_string).await?,
+        Some(Commands::Remove { project_code }) => {
+            commands::remove::handle(project_code).await?
+        }
+        Some(Commands::Start {
             project_code,
             search_string,
             start,
             end,
-        } => commands::start::handle(project_code, search_string, start, end).await?,
-        Commands::Stop { at } => commands::stop::handle(at).await?,
-        Commands::Set { date } => commands::set::handle(date).await?,
-        Commands::Log { summary } => commands::log::handle(summary).await?,
-        Commands::Pending { action } => commands::pending::handle(action).await?,
+        }) => commands::start::handle(project_code, search_string, start, end).await?,
+        Some(Commands::Stop { at }) => commands::stop::handle(at).await?,
+        Some(Commands::Set { date }) => commands::set::handle(date).await?,
+        Some(Commands::Log { summary }) => commands::log::handle(summary).await?,
+        Some(Commands::Pending { action }) => commands::pending::handle(action).await?,
     }
     Ok(())
 }

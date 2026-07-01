@@ -2,6 +2,9 @@ use colored::Colorize;
 
 use crate::config;
 use crate::error::{KlockError, Result};
+use crate::services::projects::{
+    pending_affected_by_clock_unlink, unlink_integration, IntegrationKind,
+};
 use crate::session::{prompt_confirm, prompt_select, prompt_text};
 
 const BOARD_TAG: &str = "[board]";
@@ -44,67 +47,51 @@ pub async fn handle(project_code: Option<String>) -> Result<()> {
     let selection = prompt_select("Select integration to unlink:", options)?;
 
     let (kind, target_id) = if let Some(rest) = selection.strip_prefix(&format!("{BOARD_TAG} ")) {
-        ("board", rest.to_string())
+        (IntegrationKind::Board, rest.to_string())
     } else if let Some(rest) = selection.strip_prefix(&format!("{CLOCK_TAG} ")) {
-        ("clock", rest.to_string())
+        (IntegrationKind::Clock, rest.to_string())
     } else {
         return Err(KlockError::ConfigError(format!(
             "Unrecognized selection '{selection}'"
         )));
     };
 
-    if kind == "clock" {
-        warn_about_pending_for_clock(&target_id)?;
+    if kind == IntegrationKind::Clock {
+        let pending = config::load_pending()?;
+        let affected = pending_affected_by_clock_unlink(&pending, &target_id);
+        if !affected.is_empty() {
+            println!(
+                "{} Pending entries still target this clock: {}",
+                "!".yellow(),
+                affected
+                    .iter()
+                    .map(|i| format!("#{i}"))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            );
+            println!(
+                "  Unlinking only affects future sessions. Run `klock pending push` or `klock pending remove <id>` for these first if you don't want them to push to '{target_id}'."
+            );
+        }
     }
 
     if !prompt_confirm(&format!(
-        "Unlink {kind} '{target_id}' from project '{code}'?"
+        "Unlink {} '{target_id}' from project '{code}'?",
+        kind.label()
     ))? {
         println!("{} Cancelled.", "–".dimmed());
         return Ok(());
     }
 
-    let project = &mut cfg.projects[proj_idx];
-    match kind {
-        "board" => project.board_ids.retain(|id| id != &target_id),
-        "clock" => project.clock_ids.retain(|id| id != &target_id),
-        _ => unreachable!(),
-    }
-
-    config::save_config(&cfg)?;
+    let kind_label = kind.label().to_string();
+    unlink_integration(&mut cfg, &code, kind, &target_id)?;
     println!(
         "{} Unlinked {} '{}' from project '{}'",
         "✓".green(),
-        kind,
+        kind_label,
         target_id.bold(),
         code.bold()
     );
 
-    Ok(())
-}
-
-fn warn_about_pending_for_clock(clock_id: &str) -> Result<()> {
-    let pending = config::load_pending()?;
-    let affected: Vec<u32> = pending
-        .entries
-        .iter()
-        .filter(|e| e.clock_ids.iter().any(|cid| cid == clock_id))
-        .map(|e| e.idx)
-        .collect();
-
-    if !affected.is_empty() {
-        println!(
-            "{} Pending entries still target this clock: {}",
-            "!".yellow(),
-            affected
-                .iter()
-                .map(|i| format!("#{i}"))
-                .collect::<Vec<_>>()
-                .join(", ")
-        );
-        println!(
-            "  Unlinking only affects future sessions. Run `klock pending push` or `klock pending remove <id>` for these first if you don't want them to push to '{clock_id}'."
-        );
-    }
     Ok(())
 }

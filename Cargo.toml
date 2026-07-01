@@ -24,6 +24,12 @@ dirs = "5"
 async-trait = "0.1"
 base64 = "0.22"
 colored = "2"
+ratatui = "0.28"
+crossterm = { version = "0.28", features = ["event-stream"] }
+tui-input = "0.10"
+nucleo-matcher = "0.3"
+unicode-width = "0.2"
+futures = "0.3"
 
 [dev-dependencies]
 tokio-test = "0.4"

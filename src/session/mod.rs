@@ -2,6 +2,7 @@ use chrono::NaiveDate;
 use inquire::{Confirm, DateSelect, Password, Select, Text};
 
 use crate::error::{KlockError, Result};
+use crate::utils::time::parse_hhmm;
 
 pub fn fuzzy_select<T>(items: Vec<T>, label_fn: impl Fn(&T) -> String, prompt: &str) -> Result<T> {
     if items.is_empty() {
@@ -63,20 +64,9 @@ pub fn prompt_time(label: &str, default: Option<&str>) -> Result<String> {
             t = t.with_default(d);
         }
         let val = t.prompt().map_err(|e| KlockError::ConfigError(e.to_string()))?;
-        if val == "now" {
-            let now = chrono::Local::now();
-            return Ok(format!("{:02}{:02}", now.hour(), now.minute()));
+        match parse_hhmm(&val) {
+            Ok(s) => return Ok(s),
+            Err(_) => eprintln!("Invalid time format. Use HHMM (e.g. 0930) or 'now'."),
         }
-        if val.len() == 4 && val.chars().all(|c| c.is_ascii_digit()) {
-            let h: u32 = val[0..2].parse().unwrap_or(99);
-            let m: u32 = val[2..4].parse().unwrap_or(99);
-            if h < 24 && m < 60 {
-                return Ok(val);
-            }
-        }
-        eprintln!("Invalid time format. Use HHMM (e.g. 0930) or 'now'.");
     }
 }
-
-// needed for prompt_time
-use chrono::Timelike;

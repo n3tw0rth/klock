@@ -4,7 +4,7 @@ use clap::{Parser, Subcommand};
 #[command(name = "klock", version, about = "Track time from Jira/ClickUp boards to Jira Worklog/Clockify")]
 pub struct Cli {
     #[command(subcommand)]
-    pub command: Commands,
+    pub command: Option<Commands>,
 }
 
 #[derive(Subcommand)]

@@ -1,8 +1,8 @@
 use colored::Colorize;
 
-use crate::clocks::build_clock;
 use crate::config;
 use crate::error::Result;
+use crate::services::summary::fetch_summary;
 
 pub async fn handle(summary: bool) -> Result<()> {
     if summary {
@@ -53,40 +53,21 @@ async fn show_summary() -> Result<()> {
         return Ok(());
     }
 
+    let rows = fetch_summary(&cfg, active_date).await;
     let mut grand_total = 0.0f32;
-
-    for project in &cfg.projects {
-        for clock_id in &project.clock_ids {
-            if let Some(clock_cfg) = cfg.clocks.iter().find(|c| &c.id == clock_id) {
-                match build_clock(clock_cfg) {
-                    Ok(clock) => {
-                        match clock
-                            .get_logged_time(&project.platform_project_id, active_date)
-                            .await
-                        {
-                            Ok(hours) => {
-                                grand_total += hours;
-                                println!(
-                                    "[{}] {}",
-                                    project.code.bold(),
-                                    project.platform_project_name
-                                );
-                                println!("  {:<16} {:.1}h", clock_id, hours);
-                            }
-                            Err(e) => {
-                                println!(
-                                    "  {} Could not fetch from {}: {}",
-                                    "!".yellow(),
-                                    clock_id,
-                                    e
-                                );
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        println!("  {} Clock '{}' error: {}", "!".yellow(), clock_id, e);
-                    }
-                }
+    let mut current_code = String::new();
+    for row in &rows {
+        if row.project_code != current_code {
+            current_code = row.project_code.clone();
+            println!("[{}] {}", row.project_code.bold(), row.project_name);
+        }
+        match &row.hours {
+            Ok(h) => {
+                grand_total += *h;
+                println!("  {:<16} {:.1}h", row.clock_id, h);
+            }
+            Err(e) => {
+                println!("  {} {}: {}", "!".yellow(), row.clock_id, e);
             }
         }
     }
