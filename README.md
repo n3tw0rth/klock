@@ -1,6 +1,6 @@
 <div align="center">
 
-# ⏱ klock
+# klock
 
 **A terminal time tracker that pulls tickets from your boards and logs work to your clocks.**
 
@@ -12,7 +12,6 @@
 
 </div>
 
----
 
 ## Install
 
@@ -30,9 +29,6 @@ klock stop --at 1700   # 4. End the session — entries are queued for review
 klock pending          # 5. Audit the queue…
 klock pending push     #    …and push to all linked clocks
 ```
-
-> [!TIP]
-> Each command runs interactively when arguments are omitted.
 
 ## Commands
 
