@@ -1,6 +1,18 @@
-# klock
+<div align="center">
 
-A terminal time tracker that pulls tickets from your boards (Jira, ClickUp) and logs work to your clocks (Jira Worklog, Clockify).
+# ⏱ klock
+
+**A terminal time tracker that pulls tickets from your boards and logs work to your clocks.**
+
+[![Rust](https://img.shields.io/badge/rust-2021-orange?style=flat-square&logo=rust)](https://www.rust-lang.org/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
+[![Version](https://img.shields.io/badge/version-0.1.0-lightgrey?style=flat-square)](Cargo.toml)
+[![Boards](https://img.shields.io/badge/boards-Jira%20%C2%B7%20ClickUp-0052CC?style=flat-square&logo=jira)](#how-it-works)
+[![Clocks](https://img.shields.io/badge/clocks-Worklog%20%C2%B7%20Clockify-03A9F4?style=flat-square)](#how-it-works)
+
+</div>
+
+---
 
 ## Install
 
@@ -11,29 +23,21 @@ cargo install --path .
 ## Quick start
 
 ```sh
-# 1. Authenticate at least one board and one clock
-klock auth login
-
-# 2. Link a project to those integrations
-klock add ACME
-
-# 3. Start a session on a ticket
-klock start ACME
-
-# 4. End the session — entries are queued for review
-klock stop --at 1700
-
-# 5. Audit the queue and push to all linked clocks
-klock pending
-klock pending push
+klock auth login       # 1. Authenticate at least one board and one clock
+klock add ACME         # 2. Link a project to those integrations
+klock start ACME       # 3. Start a session on a ticket
+klock stop --at 1700   # 4. End the session — entries are queued for review
+klock pending          # 5. Audit the queue…
+klock pending push     #    …and push to all linked clocks
 ```
 
-Each command runs interactively when arguments are omitted.
+> [!TIP]
+> Each command runs interactively when arguments are omitted.
 
 ## Commands
 
 | Command | Purpose |
-|---|---|
+|:--|:--|
 | `klock auth login` / `logout` | Manage board and clock integrations |
 | `klock add [CODE]` | Link a project to a board or clock |
 | `klock remove [CODE]` | Unlink a board or clock from a project |
@@ -53,11 +57,13 @@ Each command runs interactively when arguments are omitted.
 
 ## Storage
 
-- `~/.klock/config.toml` — integrations and project links
-- `~/.klock/session.toml` — active session
-- `~/.klock/state.toml` — active logging date
-- `~/.klock/pending.toml` — queued entries
-- API tokens — OS keyring, service `klock-<integration-id>`
+| Path | Contents |
+|:--|:--|
+| `~/.klock/config.toml` | Integrations and project links |
+| `~/.klock/session.toml` | Active session |
+| `~/.klock/state.toml` | Active logging date |
+| `~/.klock/pending.toml` | Queued entries |
+| OS keyring | API tokens, service `klock-<integration-id>` |
 
 ## License
 
